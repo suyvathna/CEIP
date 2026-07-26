@@ -1,24 +1,34 @@
 from fastapi import FastAPI
+from sqlalchemy import text
+
+from app.core.database import engine
 
 app = FastAPI(
     title="Construction Evidence Intelligence Platform API",
-    description="Backend API for the CEIP Master's Thesis Project",
-    version="0.2.0",
+    version="0.3.0",
 )
 
 
-@app.get("/", tags=["System"])
+@app.get("/")
 def root():
     return {
-        "application": "Construction Evidence Intelligence Platform",
-        "version": "0.2.0",
-        "status": "running",
-        "message": "Welcome to the CEIP API",
+        "application": "CEIP",
+        "version": "0.3.0",
     }
 
 
-@app.get("/health", tags=["System"])
-def health_check():
+@app.get("/health")
+def health():
+    return {"status": "healthy"}
+
+
+@app.get("/database")
+def database_test():
+    with engine.connect() as connection:
+        result = connection.execute(text("SELECT version();"))
+        version = result.scalar()
+
     return {
-        "status": "healthy",
+        "database": "connected",
+        "postgres_version": version,
     }
