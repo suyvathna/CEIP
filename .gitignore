@@ -1,6 +1,19 @@
+# Python
 __pycache__/
 *.pyc
+
+# Environment
 .env
+
+# VS Code
 .vscode/
+
+# IDE
 .idea/
+
+# Uploads
 uploads/
+
+# Python virtual environments
+.venv/
+env/

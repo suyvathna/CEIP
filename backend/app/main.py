@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from sqlalchemy import text
 
-from app.core.database import engine
+from backend.app.db.database import engine
 
 app = FastAPI(
     title="Construction Evidence Intelligence Platform API",
