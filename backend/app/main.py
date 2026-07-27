@@ -1,8 +1,8 @@
-from fastapi import FastAPI
-from sqlalchemy import text
+from fastapi import FastAPI     #responsible for creating the FastAPI application instance
+from sqlalchemy import text     #responsible for executing raw SQL queries
 
-from app.api import api_router
-from app.db.database import engine
+from app.api import api_router  #responsible for including the API router that contains all the API endpoints
+from app.db.database import engine  #responsible for creating a connection to the database using SQLAlchemy's engine
 
 app = FastAPI(
     title="Construction Evidence Intelligence Platform API",
