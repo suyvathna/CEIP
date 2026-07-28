@@ -15,6 +15,7 @@ from app.repositories.event_repository import (
     get_timeline,
     get_project_timeline,
     get_project_events,
+    get_project_activity,
 )
 from app.schemas.event import EventCreate
 
@@ -85,3 +86,30 @@ def get_project_events_service(
         db,
         project_id,
     )
+
+def get_project_activity_service(
+    db: Session,
+    project_id: UUID,
+):
+    activities = get_project_activity(
+        db,
+        project_id,
+    )
+
+    result = []
+
+    for activity in activities:
+        result.append(
+            {
+                "activity_type": "EVENT",
+                "event_id": activity.event_id,
+                "title": activity.title,
+                "event_date": activity.event_date,
+                "event_time": activity.event_time,
+                "evidence_count": activity.evidence_count,
+                "diary_exists": activity.diary_exists > 0,
+                "created_at": activity.created_at,
+            }
+        )
+
+    return result

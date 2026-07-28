@@ -18,9 +18,10 @@ from app.services.event_service import (
     get_timeline_service,
     get_project_timeline_service,
     get_project_events_service,
+    get_project_activity_service,
 )
 from app.schemas.timeline import TimelineItem
-
+from app.schemas.activity import ActivityResponse
 
 router = APIRouter(
     prefix="/events",
@@ -95,6 +96,19 @@ def read_project_events(
     db: Session = Depends(get_db),
 ):
     return get_project_events_service(
+        db,
+        project_id,
+    )
+
+@router.get(
+    "/project/{project_id}/activity",
+    response_model=list[ActivityResponse],
+)
+def project_activity(
+    project_id: UUID,
+    db: Session = Depends(get_db),
+):
+    return get_project_activity_service(
         db,
         project_id,
     )

@@ -7,7 +7,12 @@ from app.models.event import Event
 from app.schemas.event import EventCreate
 from sqlalchemy import func
 
+
 from app.models.evidence import Evidence
+
+from app.models.daily_diary import DailyDiary
+
+
 
 def create_event(db: Session, event: EventCreate) -> Event:
     db_event = Event(**event.model_dump())
@@ -147,6 +152,49 @@ def get_project_events(
         .order_by(
             Event.event_date,
             Event.event_time,
+        )
+        .all()
+    )
+
+def get_project_activity(
+    db: Session,
+    project_id: UUID,
+):
+    return (
+        db.query(
+            Event.id.label("event_id"),
+            Event.title,
+            Event.event_date,
+            Event.event_time,
+            Event.created_at,
+            func.count(Evidence.id).label(
+                "evidence_count"
+            ),
+            func.count(DailyDiary.id).label(
+                "diary_exists"
+            ),
+        )
+        .outerjoin(
+            Evidence,
+            Evidence.event_id == Event.id,
+        )
+        .outerjoin(
+            DailyDiary,
+            DailyDiary.event_id == Event.id,
+        )
+        .filter(
+            Event.project_id == project_id,
+        )
+        .group_by(
+            Event.id,
+            Event.title,
+            Event.event_date,
+            Event.event_time,
+            Event.created_at,
+        )
+        .order_by(
+            Event.event_date.desc(),
+            Event.event_time.desc(),
         )
         .all()
     )
