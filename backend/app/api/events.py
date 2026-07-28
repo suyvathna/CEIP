@@ -19,6 +19,7 @@ from app.services.event_service import (
     get_project_timeline_service,
     get_project_events_service,
     get_project_activity_service,
+    filter_events_service,
 )
 from app.schemas.timeline import TimelineItem
 from app.schemas.activity import ActivityResponse
@@ -112,6 +113,29 @@ def project_activity(
         db,
         project_id,
     )
+
+@router.get(
+    "/filter",
+    response_model=list[EventResponse],
+)
+def filter_events(
+    project_id: UUID | None = None,
+    event_type: str | None = None,
+    severity: str | None = None,
+    status: str | None = None,
+    db: Session = Depends(get_db),
+):
+    return filter_events_service(
+        db=db,
+        project_id=project_id,
+        event_type=event_type,
+        severity=severity,
+        status=status,
+    )
+
+
+
+
 
 @router.get("/{event_id}", response_model=EventResponse)
 def read_event(

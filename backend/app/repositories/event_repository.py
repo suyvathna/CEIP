@@ -198,3 +198,40 @@ def get_project_activity(
         )
         .all()
     )
+
+def filter_events(
+    db: Session,
+    project_id: UUID | None = None,
+    event_type: str | None = None,
+    severity: str | None = None,
+    status: str | None = None,
+):
+    query = db.query(Event)
+
+    if project_id:
+        query = query.filter(
+            Event.project_id == project_id
+        )
+
+    if event_type:
+        query = query.filter(
+            Event.event_type == event_type
+        )
+
+    if severity:
+        query = query.filter(
+            Event.severity == severity
+        )
+
+    if status:
+        query = query.filter(
+            Event.status == status
+        )
+
+    return (
+        query.order_by(
+            Event.event_date.desc(),
+            Event.event_time.desc(),
+        )
+        .all()
+    )

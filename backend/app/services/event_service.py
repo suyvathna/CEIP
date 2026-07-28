@@ -16,6 +16,7 @@ from app.repositories.event_repository import (
     get_project_timeline,
     get_project_events,
     get_project_activity,
+    filter_events,
 )
 from app.schemas.event import EventCreate
 
@@ -113,3 +114,18 @@ def get_project_activity_service(
         )
 
     return result
+
+def filter_events_service(
+    db: Session,
+    project_id: UUID | None = None,
+    event_type: str | None = None,
+    severity: str |None = None,
+    status: str | None = None,
+):
+    return filter_events(
+        db=db,
+        project_id=project_id,
+        event_type=event_type,
+        severity=severity,
+        status=status,
+    )
