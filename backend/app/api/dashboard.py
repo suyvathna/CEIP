@@ -11,7 +11,8 @@ from app.services.dashboard_service import (
 )
 from app.schemas.project_report import ProjectReportResponse
 
-
+from fastapi.responses import JSONResponse
+import json
 
 router = APIRouter(
     prefix="/dashboard",
@@ -60,3 +61,32 @@ def project_report(
         )
 
     return report
+
+@router.get("/{project_id}/report/export")
+def export_project_report(
+    project_id: UUID,
+    db: Session = Depends(get_db),
+):
+    report = get_project_report_service(
+        db,
+        project_id,
+    )
+
+    if report is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Project not found",
+        )
+
+    return JSONResponse(
+        content=json.loads(
+            json.dumps(
+                report,
+                default=str,
+            )
+        ),
+        headers={
+            "Content-Disposition":
+            f'attachment; filename="project_report_{project_id}.json"'
+        },
+    )
