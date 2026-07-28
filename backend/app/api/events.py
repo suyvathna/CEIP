@@ -20,9 +20,11 @@ from app.services.event_service import (
     get_project_events_service,
     get_project_activity_service,
     filter_events_service,
+    get_timeline_analytics_service,
 )
 from app.schemas.timeline import TimelineItem
 from app.schemas.activity import ActivityResponse
+from app.schemas.timeline_analytics import TimelineDay
 
 router = APIRouter(
     prefix="/events",
@@ -132,6 +134,20 @@ def filter_events(
         severity=severity,
         status=status,
     )
+
+@router.get(
+    "/project/{project_id}/timeline-analytics",
+    response_model=list[TimelineDay],
+)
+def timeline_analytics(
+    project_id: UUID,
+    db: Session = Depends(get_db),
+):
+    return get_timeline_analytics_service(
+        db,
+        project_id,
+    )
+
 
 
 

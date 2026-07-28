@@ -214,3 +214,40 @@ def filter_events_service(
         )
         .all()
     )
+
+def get_timeline_analytics_service(
+    db: Session,
+    project_id: UUID,
+):
+    events = (
+        db.query(Event)
+        .filter(
+            Event.project_id == project_id
+        )
+        .order_by(
+            Event.event_date,
+            Event.event_time,
+        )
+        .all()
+    )
+
+    grouped = {}
+
+    for event in events:
+        if event.event_date not in grouped:
+            grouped[event.event_date] = []
+
+        grouped[event.event_date].append(event)
+
+    result = []
+
+    for event_date, day_events in grouped.items():
+        result.append(
+            {
+                "event_date": event_date,
+                "total_events": len(day_events),
+                "events": day_events,
+            }
+        )
+
+    return result
