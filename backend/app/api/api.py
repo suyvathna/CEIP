@@ -7,6 +7,8 @@ from app.api.storage import router as storage_router
 from app.api.evidences import router as evidence_router
 from app.api.dashboard import router as dashboard_router
 from app.api.timeline import router as timeline_router
+from app.api.users import router as user_router
+
 
 api_router = APIRouter()
 
@@ -17,3 +19,4 @@ api_router.include_router(storage_router)
 api_router.include_router(evidence_router)
 api_router.include_router(dashboard_router)
 api_router.include_router(timeline_router)
+api_router.include_router(user_router)
