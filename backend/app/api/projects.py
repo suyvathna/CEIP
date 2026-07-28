@@ -8,10 +8,14 @@ from app.services.project_service import (
     get_project,
     get_projects,
 )
+from app.models.user import User
+
+from app.services.auth_service import (get_current_user)
 
 router = APIRouter(
     prefix="/projects",
     tags=["Projects"],
+    dependencies=[Depends(get_current_user)]    # this line ensures that all endpoints in this router require authentication
 )
 
 
