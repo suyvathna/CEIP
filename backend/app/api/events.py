@@ -69,7 +69,7 @@ def read_events(
     "/timeline",
     response_model=list[EventResponse],
 )
-def event_timeline(
+def read_event_timeline(
     db: Session = Depends(get_db),
 ):
     return get_event_timeline_service(db)
@@ -78,7 +78,7 @@ def event_timeline(
     "/timeline/{project_id}",
     response_model=list[EventResponse],
 )
-def event_timeline(
+def read_project_event_timeline(
     project_id: UUID,
     db: Session = Depends(get_db),
 ):

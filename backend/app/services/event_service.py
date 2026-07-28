@@ -1,100 +1,170 @@
 from datetime import date
 from uuid import UUID
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.repositories.event_repository import (
-    create_event,
-    delete_event,
-    get_event,
-    get_events,
-    search_events_by_date,
-    update_event,
-    search_events,
-    get_event_timeline,
-    get_timeline,
-    get_project_timeline,
-    get_project_events,
-    get_project_activity,
-    filter_events,
-)
+from app.models.daily_diary import DailyDiary
+from app.models.evidence import Evidence
+from app.models.event import Event
 from app.schemas.event import EventCreate
 
 
-def create_event_service(db: Session, event: EventCreate):
-    return create_event(db, event)
+def create_event_service(db: Session, event: EventCreate) -> Event:
+    db_event = Event(**event.model_dump())
+
+    db.add(db_event)
+    db.commit()
+    db.refresh(db_event)
+
+    return db_event
 
 
 def get_events_service(db: Session):
-    return get_events(db)
+    return db.scalars(select(Event)).all()
 
 
 def get_event_service(db: Session, event_id: UUID):
-    return get_event(db, event_id)
+    return db.get(Event, event_id)
 
 
 def update_event_service(db: Session, event_id: UUID, event: EventCreate):
-    return update_event(db, event_id, event)
+    db_event = db.get(Event, event_id)
+
+    if not db_event:
+        return None
+
+    for key, value in event.model_dump().items():
+        setattr(db_event, key, value)
+
+    db.commit()
+    db.refresh(db_event)
+
+    return db_event
 
 
 def delete_event_service(db: Session, event_id: UUID):
-    return delete_event(db, event_id)
+    db_event = db.get(Event, event_id)
+
+    if not db_event:
+        return None
+
+    db.delete(db_event)
+    db.commit()
+
+    return db_event
 
 
-def search_events_service(
-    db: Session,
-    keyword: str,
-):
-    return search_events(db, keyword)
+def search_events_service(db: Session, keyword: str):
+    statement = select(Event).where(Event.title.ilike(f"%{keyword}%"))
+    return db.scalars(statement).all()
+
 
 def search_events_by_date_service(
     db: Session,
     start_date: date,
     end_date: date,
 ):
-    return search_events_by_date(
-        db,
-        start_date,
-        end_date,
+    statement = (
+        select(Event)
+        .where(
+            Event.event_date >= start_date,
+            Event.event_date <= end_date,
+        )
+        .order_by(Event.event_date)
     )
+
+    return db.scalars(statement).all()
+
 
 def get_event_timeline_service(db: Session):
-    return get_event_timeline(db)
-
-def get_timeline_service(
-    db: Session,
-    project_id: UUID,
-):
-    return get_timeline(
-        db,
-        project_id,
+    return (
+        db.query(Event)
+        .order_by(
+            Event.event_date.asc(),
+            Event.event_time.asc(),
+        )
+        .all()
     )
 
-def get_project_timeline_service(
-    db: Session,
-    project_id: UUID,
-):
-    return get_project_timeline(
-        db,
-        project_id,
+
+def get_timeline_service(db: Session, project_id: UUID):
+    return (
+        db.query(Event)
+        .filter(Event.project_id == project_id)
+        .order_by(
+            Event.event_date,
+            Event.event_time,
+        )
+        .all()
     )
 
-def get_project_events_service(
-    db: Session,
-    project_id: UUID,
-):
-    return get_project_events(
-        db,
-        project_id,
+
+def get_project_timeline_service(db: Session, project_id: UUID):
+    return (
+        db.query(
+            Event.id.label("event_id"),
+            Event.title,
+            Event.event_type,
+            Event.event_date,
+            Event.event_time,
+            func.count(Evidence.id).label("evidence_count"),
+        )
+        .outerjoin(Evidence, Event.id == Evidence.event_id)
+        .filter(Event.project_id == project_id)
+        .group_by(
+            Event.id,
+            Event.title,
+            Event.event_type,
+            Event.event_date,
+            Event.event_time,
+        )
+        .order_by(
+            Event.event_date.desc(),
+            Event.event_time.desc(),
+        )
+        .all()
     )
 
-def get_project_activity_service(
-    db: Session,
-    project_id: UUID,
-):
-    activities = get_project_activity(
-        db,
-        project_id,
+
+def get_project_events_service(db: Session, project_id: UUID):
+    return (
+        db.query(Event)
+        .filter(Event.project_id == project_id)
+        .order_by(
+            Event.event_date,
+            Event.event_time,
+        )
+        .all()
+    )
+
+
+def get_project_activity_service(db: Session, project_id: UUID):
+    activities = (
+        db.query(
+            Event.id.label("event_id"),
+            Event.title,
+            Event.event_date,
+            Event.event_time,
+            Event.created_at,
+            func.count(Evidence.id).label("evidence_count"),
+            func.count(DailyDiary.id).label("diary_exists"),
+        )
+        .outerjoin(Evidence, Evidence.event_id == Event.id)
+        .outerjoin(DailyDiary, DailyDiary.event_id == Event.id)
+        .filter(Event.project_id == project_id)
+        .group_by(
+            Event.id,
+            Event.title,
+            Event.event_date,
+            Event.event_time,
+            Event.created_at,
+        )
+        .order_by(
+            Event.event_date.desc(),
+            Event.event_time.desc(),
+        )
+        .all()
     )
 
     result = []
@@ -115,17 +185,32 @@ def get_project_activity_service(
 
     return result
 
+
 def filter_events_service(
     db: Session,
     project_id: UUID | None = None,
     event_type: str | None = None,
-    severity: str |None = None,
+    severity: str | None = None,
     status: str | None = None,
 ):
-    return filter_events(
-        db=db,
-        project_id=project_id,
-        event_type=event_type,
-        severity=severity,
-        status=status,
+    query = db.query(Event)
+
+    if project_id:
+        query = query.filter(Event.project_id == project_id)
+
+    if event_type:
+        query = query.filter(Event.event_type == event_type)
+
+    if severity:
+        query = query.filter(Event.severity == severity)
+
+    if status:
+        query = query.filter(Event.status == status)
+
+    return (
+        query.order_by(
+            Event.event_date.desc(),
+            Event.event_time.desc(),
+        )
+        .all()
     )

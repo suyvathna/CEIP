@@ -85,6 +85,27 @@ def get_dashboard_service(
         .scalar()
     )
 
+    event_type_statistics = (
+        db.query(
+            Event.event_type,
+            func.count(Event.id).label("total"),
+        )
+        .filter(
+            Event.project_id == project_id,
+        )
+        .group_by(
+            Event.event_type,
+        )
+        .order_by(
+            Event.event_type,
+        )
+        .all()
+    )
+
+
+
+    
+
     recent_events = (
         db.query(Event)
         .filter(Event.project_id == project_id)
@@ -107,6 +128,14 @@ def get_dashboard_service(
         "high_severity_events": high_events,
         "medium_severity_events": medium_events,
         "low_severity_events": low_events,
+
+        "event_type_statistics": [
+            {
+                "event_type": row.event_type,
+                "total": row.total,
+            }
+            for row in event_type_statistics
+        ],
 
         "recent_events": recent_events,
     }

@@ -8,13 +8,18 @@ class RecentEvent(BaseModel):
     id: UUID
     title: str
     event_type: str
-    status: str
     severity: str
+    status: str
     created_at: datetime
 
     model_config = {
         "from_attributes": True
     }
+
+
+class EventTypeStatistic(BaseModel):
+    event_type: str
+    total: int
 
 
 class DashboardResponse(BaseModel):
@@ -31,5 +36,7 @@ class DashboardResponse(BaseModel):
     high_severity_events: int
     medium_severity_events: int
     low_severity_events: int
+
+    event_type_statistics: list[EventTypeStatistic]
 
     recent_events: list[RecentEvent]

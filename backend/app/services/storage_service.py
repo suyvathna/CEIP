@@ -1,4 +1,3 @@
-from fileinput import filename
 from uuid import uuid4
 
 from minio import Minio
