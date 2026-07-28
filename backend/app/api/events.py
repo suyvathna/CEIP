@@ -1,30 +1,31 @@
+from datetime import date
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.db.database import SessionLocal
+from app.db.session import get_db
 from app.schemas.event import EventCreate, EventResponse
 from app.services.event_service import (
     create_event_service,
     delete_event_service,
     get_event_service,
     get_events_service,
+    search_events_by_date_service,
+    search_events_service,
     update_event_service,
+    get_event_timeline_service,
+    get_timeline_service,
+    get_project_timeline_service,
+    get_project_events_service,
 )
+from app.schemas.timeline import TimelineItem
+
 
 router = APIRouter(
     prefix="/events",
     tags=["Events"],
 )
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 @router.post("/", response_model=EventResponse)
@@ -35,12 +36,68 @@ def create_event(
     return create_event_service(db, event)
 
 
+@router.get("/search", response_model=list[EventResponse])
+def search_event(
+    keyword: str,
+    db: Session = Depends(get_db),
+):
+    return search_events_service(db, keyword)
+
+
+@router.get("/search-by-date", response_model=list[EventResponse])
+def search_event_by_date(
+    start_date: date,
+    end_date: date,
+    db: Session = Depends(get_db),
+):
+    return search_events_by_date_service(
+        db,
+        start_date,
+        end_date,
+    )
+
+
 @router.get("/", response_model=list[EventResponse])
 def read_events(
     db: Session = Depends(get_db),
 ):
     return get_events_service(db)
 
+@router.get(
+    "/timeline",
+    response_model=list[EventResponse],
+)
+def event_timeline(
+    db: Session = Depends(get_db),
+):
+    return get_event_timeline_service(db)
+
+@router.get(
+    "/timeline/{project_id}",
+    response_model=list[EventResponse],
+)
+def event_timeline(
+    project_id: UUID,
+    db: Session = Depends(get_db),
+):
+    return get_timeline_service(
+        db,
+        project_id,
+    )
+
+
+@router.get(
+    "/project/{project_id}",
+    response_model=list[EventResponse],
+)
+def read_project_events(
+    project_id: UUID,
+    db: Session = Depends(get_db),
+):
+    return get_project_events_service(
+        db,
+        project_id,
+    )
 
 @router.get("/{event_id}", response_model=EventResponse)
 def read_event(
@@ -50,7 +107,10 @@ def read_event(
     event = get_event_service(db, event_id)
 
     if event is None:
-        raise HTTPException(404, "Event not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Event not found",
+        )
 
     return event
 
@@ -61,10 +121,17 @@ def update_event(
     event: EventCreate,
     db: Session = Depends(get_db),
 ):
-    updated = update_event_service(db, event_id, event)
+    updated = update_event_service(
+        db,
+        event_id,
+        event,
+    )
 
     if updated is None:
-        raise HTTPException(404, "Event not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Event not found",
+        )
 
     return updated
 
@@ -74,9 +141,30 @@ def delete_event(
     event_id: UUID,
     db: Session = Depends(get_db),
 ):
-    deleted = delete_event_service(db, event_id)
+    deleted = delete_event_service(
+        db,
+        event_id,
+    )
 
     if deleted is None:
-        raise HTTPException(404, "Event not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Event not found",
+        )
 
-    return {"message": "Event deleted successfully"}
+    return {
+        "message": "Event deleted successfully",
+    }
+
+@router.get(
+    "/project/{project_id}/timeline",
+    response_model=list[TimelineItem],
+)
+def project_timeline(
+    project_id: UUID,
+    db: Session = Depends(get_db),
+):
+    return get_project_timeline_service(
+        db,
+        project_id,
+    )

@@ -1,17 +1,18 @@
 from uuid import UUID
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-
-from app.db.database import SessionLocal
+from app.db.session import get_db
 from app.schemas.daily_diary import (
     DailyDiaryCreate,
     DailyDiaryResponse,
 )
+
+from app.schemas.daily_report import DailyReportResponse
 from app.services.daily_diary_service import (
-    create_daily_diary_service,
-    get_daily_diaries_service,
-    get_daily_diary_service,
+    create_daily_diary,
+    get_daily_diaries,
+    get_daily_diary,
+    get_daily_report,
 )
 
 router = APIRouter(
@@ -19,36 +20,27 @@ router = APIRouter(
     tags=["Daily Diaries"],
 )
 
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
 @router.post("/", response_model=DailyDiaryResponse)
-def create_daily_diary(
+def create_daily_diary_endpoint(
     diary: DailyDiaryCreate,
     db: Session = Depends(get_db),
 ):
-    return create_daily_diary_service(db, diary)
+    return create_daily_diary(db, diary)
 
 
 @router.get("/", response_model=list[DailyDiaryResponse])
-def read_daily_diaries(
+def read_daily_diaries_endpoint(
     db: Session = Depends(get_db),
 ):
-    return get_daily_diaries_service(db)
+    return get_daily_diaries(db)
 
 
 @router.get("/{diary_id}", response_model=DailyDiaryResponse)
-def read_daily_diary(
+def read_daily_diary_endpoint(
     diary_id: UUID,
     db: Session = Depends(get_db),
 ):
-    diary = get_daily_diary_service(db, diary_id)
+    diary = get_daily_diary(db, diary_id)
 
     if diary is None:
         raise HTTPException(
@@ -57,3 +49,21 @@ def read_daily_diary(
         )
 
     return diary
+
+@router.get(
+    "/{diary_id}/report",
+    response_model=DailyReportResponse,
+)
+def daily_report_endpoint(
+    diary_id: UUID,
+    db: Session = Depends(get_db),
+):
+    report = get_daily_report(db, diary_id)
+
+    if report is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Daily diary not found",
+        )
+
+    return report

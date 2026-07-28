@@ -1,8 +1,6 @@
 from uuid import UUID
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-
 from app.db.session import get_db
 from app.schemas.project import ProjectCreate, ProjectResponse
 from app.services.project_service import (

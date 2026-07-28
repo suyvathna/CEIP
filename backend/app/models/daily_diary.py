@@ -1,7 +1,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Text
+
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -42,6 +43,8 @@ class DailyDiary(Base):
     tomorrow_plan: Mapped[str | None] = mapped_column(Text)
 
     remarks: Mapped[str | None] = mapped_column(Text)
+
+    diary_date: Mapped[datetime.date] = mapped_column(Date, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

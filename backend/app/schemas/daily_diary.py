@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -16,6 +16,7 @@ class DailyDiaryCreate(BaseModel):
     engineer_instruction: str | None = None
     tomorrow_plan: str | None = None
     remarks: str | None = None
+    diary_date: date
 
 
 class DailyDiaryResponse(BaseModel):

@@ -13,6 +13,12 @@ class Settings(BaseSettings):
     database_user: str
     database_password: str
 
+    minio_endpoint: str
+    minio_access_key: str
+    minio_secret_key: str
+    minio_bucket: str
+    minio_secure: bool = False
+
     # Security
     secret_key: str
     algorithm: str
