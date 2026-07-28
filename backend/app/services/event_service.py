@@ -10,6 +10,9 @@ from app.models.event import Event
 from app.schemas.event import EventCreate
 
 
+
+
+
 def create_event_service(db: Session, event: EventCreate) -> Event:
     db_event = Event(**event.model_dump())
 
@@ -76,33 +79,29 @@ def search_events_by_date_service(
 
     return db.scalars(statement).all()
 
-
 def get_event_timeline_service(db: Session):
-    return (
-        db.query(Event)
-        .order_by(
-            Event.event_date.asc(),
-            Event.event_time.asc(),
-        )
-        .all()
+    stmt = select(Event).order_by(
+        Event.event_date.asc(),
+        Event.event_time.asc(),
     )
+    return db.scalars(stmt).all()
 
 
 def get_timeline_service(db: Session, project_id: UUID):
-    return (
-        db.query(Event)
-        .filter(Event.project_id == project_id)
+    stmt = (
+        select(Event)
+        .where(Event.project_id == project_id)
         .order_by(
             Event.event_date,
             Event.event_time,
         )
-        .all()
     )
+    return db.scalars(stmt).all()
 
 
 def get_project_timeline_service(db: Session, project_id: UUID):
-    return (
-        db.query(
+    stmt = (
+        select(
             Event.id.label("event_id"),
             Event.title,
             Event.event_type,
@@ -111,7 +110,7 @@ def get_project_timeline_service(db: Session, project_id: UUID):
             func.count(Evidence.id).label("evidence_count"),
         )
         .outerjoin(Evidence, Event.id == Evidence.event_id)
-        .filter(Event.project_id == project_id)
+        .where(Event.project_id == project_id)
         .group_by(
             Event.id,
             Event.title,
@@ -123,25 +122,26 @@ def get_project_timeline_service(db: Session, project_id: UUID):
             Event.event_date.desc(),
             Event.event_time.desc(),
         )
-        .all()
     )
+    # Using db.execute(stmt).mappings().all() turns rows directly into dict-like objects
+    return db.execute(stmt).mappings().all()
 
 
 def get_project_events_service(db: Session, project_id: UUID):
-    return (
-        db.query(Event)
-        .filter(Event.project_id == project_id)
+    stmt = (
+        select(Event)
+        .where(Event.project_id == project_id)
         .order_by(
             Event.event_date,
             Event.event_time,
         )
-        .all()
     )
+    return db.scalars(stmt).all()
 
 
 def get_project_activity_service(db: Session, project_id: UUID):
-    activities = (
-        db.query(
+    stmt = (
+        select(
             Event.id.label("event_id"),
             Event.title,
             Event.event_date,
@@ -152,7 +152,7 @@ def get_project_activity_service(db: Session, project_id: UUID):
         )
         .outerjoin(Evidence, Evidence.event_id == Event.id)
         .outerjoin(DailyDiary, DailyDiary.event_id == Event.id)
-        .filter(Event.project_id == project_id)
+        .where(Event.project_id == project_id)
         .group_by(
             Event.id,
             Event.title,
@@ -164,26 +164,23 @@ def get_project_activity_service(db: Session, project_id: UUID):
             Event.event_date.desc(),
             Event.event_time.desc(),
         )
-        .all()
     )
 
-    result = []
+    activities = db.execute(stmt).all()
 
-    for activity in activities:
-        result.append(
-            {
-                "activity_type": "EVENT",
-                "event_id": activity.event_id,
-                "title": activity.title,
-                "event_date": activity.event_date,
-                "event_time": activity.event_time,
-                "evidence_count": activity.evidence_count,
-                "diary_exists": activity.diary_exists > 0,
-                "created_at": activity.created_at,
-            }
-        )
-
-    return result
+    return [
+        {
+            "activity_type": "EVENT",
+            "event_id": activity.event_id,
+            "title": activity.title,
+            "event_date": activity.event_date,
+            "event_time": activity.event_time,
+            "evidence_count": activity.evidence_count,
+            "diary_exists": activity.diary_exists > 0,
+            "created_at": activity.created_at,
+        }
+        for activity in activities
+    ]
 
 
 def filter_events_service(
@@ -193,43 +190,41 @@ def filter_events_service(
     severity: str | None = None,
     status: str | None = None,
 ):
-    query = db.query(Event)
+    stmt = select(Event)
 
     if project_id:
-        query = query.filter(Event.project_id == project_id)
+        stmt = stmt.where(Event.project_id == project_id)
 
     if event_type:
-        query = query.filter(Event.event_type == event_type)
+        stmt = stmt.where(Event.event_type == event_type)
 
     if severity:
-        query = query.filter(Event.severity == severity)
+        stmt = stmt.where(Event.severity == severity)
 
     if status:
-        query = query.filter(Event.status == status)
+        stmt = stmt.where(Event.status == status)
 
-    return (
-        query.order_by(
-            Event.event_date.desc(),
-            Event.event_time.desc(),
-        )
-        .all()
+    stmt = stmt.order_by(
+        Event.event_date.desc(),
+        Event.event_time.desc(),
     )
+
+    return db.scalars(stmt).all()
+
 
 def get_timeline_analytics_service(
     db: Session,
     project_id: UUID,
 ):
-    events = (
-        db.query(Event)
-        .filter(
-            Event.project_id == project_id
-        )
+    stmt = (
+        select(Event)
+        .where(Event.project_id == project_id)
         .order_by(
             Event.event_date,
             Event.event_time,
         )
-        .all()
     )
+    events = db.scalars(stmt).all()
 
     grouped = {}
 
@@ -239,15 +234,11 @@ def get_timeline_analytics_service(
 
         grouped[event.event_date].append(event)
 
-    result = []
-
-    for event_date, day_events in grouped.items():
-        result.append(
-            {
-                "event_date": event_date,
-                "total_events": len(day_events),
-                "events": day_events,
-            }
-        )
-
-    return result
+    return [
+        {
+            "event_date": event_date,
+            "total_events": len(day_events),
+            "events": day_events,
+        }
+        for event_date, day_events in grouped.items()
+    ]

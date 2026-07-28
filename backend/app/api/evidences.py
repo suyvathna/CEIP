@@ -26,9 +26,12 @@ from app.services.storage_service import (
     upload_file,
 )
 
+from app.services.auth_service import (get_current_user)
+
 router = APIRouter(
     prefix="/evidence",
     tags=["Evidence"],
+    #dependencies=[Depends(get_current_user)]    # this line ensures that all endpoints in this router require authentication
 )
 
 

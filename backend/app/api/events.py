@@ -25,10 +25,12 @@ from app.services.event_service import (
 from app.schemas.timeline import TimelineItem
 from app.schemas.activity import ActivityResponse
 from app.schemas.timeline_analytics import TimelineDay
+from app.services.auth_service import (get_current_user)
 
 router = APIRouter(
     prefix="/events",
     tags=["Events"],
+    #dependencies=[Depends(get_current_user)]    # this line ensures that all endpoints in this router require authentication
 )
 
 

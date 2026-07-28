@@ -1,6 +1,7 @@
-from sqlalchemy.orm import Session
-
 from app.models.user import User
+from uuid import UUID
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 
 def create_user(db: Session, user: User):
@@ -12,23 +13,18 @@ def create_user(db: Session, user: User):
 
 
 def get_users(db: Session):
-    return db.query(User).all()
+    return db.scalars(select(User)).all()
 
 
-def get_user(db: Session, user_id):
-    return (
-        db.query(User)
-        .filter(User.id == user_id)
-        .first()
-    )
+def get_user(db: Session, user_id: UUID):
+    # db.get is the canonical 2.0 way to fetch by Primary Key
+    return db.get(User, user_id)
 
 
 def get_user_by_email(
     db: Session,
     email: str,
 ):
-    return (
-        db.query(User)
-        .filter(User.email == email)
-        .first()
-    )
+    return db.scalars(
+        select(User).where(User.email == email)
+    ).first()

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.schemas.timeline import TimelineResponse
 from app.services.timeline_service import (
-    get_timeline_service,
+    get_filtered_project_timeline_service,
 )
 
 router = APIRouter(
@@ -28,7 +28,7 @@ def read_timeline(
     severity: str | None = None,
     db: Session = Depends(get_db),
 ):
-    return get_timeline_service(
+    return get_filtered_project_timeline_service(
         db,
         project_id,
         start_date,

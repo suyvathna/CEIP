@@ -1,4 +1,6 @@
-from sqlalchemy import func
+from uuid import UUID
+
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.daily_diary import DailyDiary
@@ -7,128 +9,97 @@ from app.models.evidence import Evidence
 from app.models.project import Project
 from datetime import datetime
 
-def get_dashboard_service(
-    db: Session,
-    project_id,
-):
-    project = (
-        db.query(Project)
-        .filter(Project.id == project_id)
-        .first()
-    )
+def get_dashboard_service(db: Session, project_id: UUID):
+    project = db.get(Project, project_id)
 
     if project is None:
         return None
 
-    total_events = (
-        db.query(func.count(Event.id))
-        .filter(Event.project_id == project_id)
-        .scalar()
+    total_events = db.scalar(
+        select(func.count(Event.id)).where(Event.project_id == project_id)
     )
 
-    open_events = (
-        db.query(func.count(Event.id))
-        .filter(
+    open_events = db.scalar(
+        select(func.count(Event.id)).where(
             Event.project_id == project_id,
             Event.status == "Open",
         )
-        .scalar()
     )
 
-    closed_events = (
-        db.query(func.count(Event.id))
-        .filter(
+    closed_events = db.scalar(
+        select(func.count(Event.id)).where(
             Event.project_id == project_id,
             Event.status == "Closed",
         )
-        .scalar()
     )
 
-    high_events = (
-        db.query(func.count(Event.id))
-        .filter(
+    high_events = db.scalar(
+        select(func.count(Event.id)).where(
             Event.project_id == project_id,
             Event.severity == "High",
         )
-        .scalar()
     )
 
-    medium_events = (
-        db.query(func.count(Event.id))
-        .filter(
+    medium_events = db.scalar(
+        select(func.count(Event.id)).where(
             Event.project_id == project_id,
             Event.severity == "Medium",
         )
-        .scalar()
     )
 
-    low_events = (
-        db.query(func.count(Event.id))
-        .filter(
+    low_events = db.scalar(
+        select(func.count(Event.id)).where(
             Event.project_id == project_id,
             Event.severity == "Low",
         )
-        .scalar()
     )
 
-    total_daily_diaries = (
-        db.query(func.count(DailyDiary.id))
+    total_daily_diaries = db.scalar(
+        select(func.count(DailyDiary.id))
         .join(Event, Event.id == DailyDiary.event_id)
-        .filter(Event.project_id == project_id)
-        .scalar()
+        .where(Event.project_id == project_id)
     )
 
-    total_evidence = (
-        db.query(func.count(Evidence.id))
+    total_evidence = db.scalar(
+        select(func.count(Evidence.id))
         .join(Event, Event.id == Evidence.event_id)
-        .filter(Event.project_id == project_id)
-        .scalar()
+        .where(Event.project_id == project_id)
     )
 
-    event_type_statistics = (
-        db.query(
-            Event.event_type,
+    # 1. ADD THIS MISSING QUERY HERE
+    event_type_statistics = db.execute(
+        select(
+            Event.event_type.label("event_type"),
             func.count(Event.id).label("total"),
         )
-        .filter(
-            Event.project_id == project_id,
-        )
-        .group_by(
-            Event.event_type,
-        )
-        .order_by(
-            Event.event_type,
-        )
-        .all()
-    )
+        .where(Event.project_id == project_id)
+        .group_by(Event.event_type)
+        .order_by(Event.event_type)
+    ).all()
 
-
-
-    
-
-    recent_events = (
-        db.query(Event)
-        .filter(Event.project_id == project_id)
+    recent_events = db.scalars(
+        select(Event)
+        .where(Event.project_id == project_id)
         .order_by(Event.created_at.desc())
         .limit(5)
-        .all()
-    )
+    ).all()
 
     return {
         "project_id": project.id,
         "project_name": project.project_name,
 
-        "total_events": total_events,
-        "total_daily_diaries": total_daily_diaries,
-        "total_evidence": total_evidence,
+        "total_events": total_events or 0,
+        "total_daily_diaries": total_daily_diaries or 0,
+        "total_evidence": total_evidence or 0,
 
-        "open_events": open_events,
-        "closed_events": closed_events,
+        "open_events": open_events or 0,
+        "closed_events": closed_events or 0,
 
-        "high_severity_events": high_events,
-        "medium_severity_events": medium_events,
-        "low_severity_events": low_events,
+        "high_severity_events": high_events or 0,
+        "medium_severity_events": medium_events or 0,
+        "low_severity_events": low_events or 0,
 
+        # 2. NOW THIS CAN ACCESS event_type_statistics WITHOUT ERROR
         "event_type_statistics": [
             {
                 "event_type": row.event_type,
@@ -137,110 +108,92 @@ def get_dashboard_service(
             for row in event_type_statistics
         ],
 
-        "recent_events": recent_events,
+        "recent_events": recent_events or [],
     }
-
-
 
 def get_project_report_service(
     db: Session,
-    project_id,
+    project_id: UUID,
 ):
-    project = (
-        db.query(Project)
-        .filter(Project.id == project_id)
-        .first()
-    )
+    # Fetch primary entity by PK
+    project = db.get(Project, project_id)
 
     if project is None:
         return None
 
-    total_events = (
-        db.query(func.count(Event.id))
-        .filter(Event.project_id == project_id)
-        .scalar()
+    # Scalar counts using select().where()
+    total_events = db.scalar(
+        select(func.count(Event.id)).where(Event.project_id == project_id)
     )
 
-    total_daily_diaries = (
-        db.query(func.count(DailyDiary.id))
+    total_daily_diaries = db.scalar(
+        select(func.count(DailyDiary.id))
         .join(Event, Event.id == DailyDiary.event_id)
-        .filter(Event.project_id == project_id)
-        .scalar()
+        .where(Event.project_id == project_id)
     )
 
-    total_evidence = (
-        db.query(func.count(Evidence.id))
+    total_evidence = db.scalar(
+        select(func.count(Evidence.id))
         .join(Event, Event.id == Evidence.event_id)
-        .filter(Event.project_id == project_id)
-        .scalar()
+        .where(Event.project_id == project_id)
     )
 
-    open_events = (
-        db.query(func.count(Event.id))
-        .filter(
+    open_events = db.scalar(
+        select(func.count(Event.id)).where(
             Event.project_id == project_id,
             Event.status == "Open",
         )
-        .scalar()
     )
 
-    closed_events = (
-        db.query(func.count(Event.id))
-        .filter(
+    closed_events = db.scalar(
+        select(func.count(Event.id)).where(
             Event.project_id == project_id,
             Event.status == "Closed",
         )
-        .scalar()
     )
 
-    high_severity = (
-        db.query(func.count(Event.id))
-        .filter(
+    high_severity = db.scalar(
+        select(func.count(Event.id)).where(
             Event.project_id == project_id,
             Event.severity == "High",
         )
-        .scalar()
     )
 
-    medium_severity = (
-        db.query(func.count(Event.id))
-        .filter(
+    medium_severity = db.scalar(
+        select(func.count(Event.id)).where(
             Event.project_id == project_id,
             Event.severity == "Medium",
         )
-        .scalar()
     )
 
-    low_severity = (
-        db.query(func.count(Event.id))
-        .filter(
+    low_severity = db.scalar(
+        select(func.count(Event.id)).where(
             Event.project_id == project_id,
             Event.severity == "Low",
         )
-        .scalar()
     )
 
-    latest_event = (
-        db.query(Event)
-        .filter(Event.project_id == project_id)
+    # Fetch scalar entity result using db.scalars().first()
+    latest_event = db.scalars(
+        select(Event)
+        .where(Event.project_id == project_id)
         .order_by(
             Event.event_date.desc(),
             Event.event_time.desc(),
         )
-        .first()
-    )
+    ).first()
 
     return {
         "project_id": project.id,
         "project_name": project.project_name,
-        "total_events": total_events,
-        "total_daily_diaries": total_daily_diaries,
-        "total_evidence": total_evidence,
-        "open_events": open_events,
-        "closed_events": closed_events,
-        "high_severity": high_severity,
-        "medium_severity": medium_severity,
-        "low_severity": low_severity,
+        "total_events": total_events or 0,
+        "total_daily_diaries": total_daily_diaries or 0,
+        "total_evidence": total_evidence or 0,
+        "open_events": open_events or 0,
+        "closed_events": closed_events or 0,
+        "high_severity": high_severity or 0,
+        "medium_severity": medium_severity or 0,
+        "low_severity": low_severity or 0,
         "latest_event": (
             latest_event.title
             if latest_event

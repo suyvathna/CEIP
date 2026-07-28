@@ -1,11 +1,12 @@
-from sqlalchemy import func
+from uuid import UUID
+
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.daily_diary import DailyDiary
 from app.models.event import Event
 from app.models.evidence import Evidence
 from app.schemas.daily_diary import DailyDiaryCreate
-
 
 def create_daily_diary(
     db: Session,
@@ -21,44 +22,26 @@ def create_daily_diary(
 
 
 def get_daily_diaries(db: Session):
-    return (
-        db.query(DailyDiary)
-        .order_by(DailyDiary.diary_date.desc())
-        .all()
-    )
+    statement = select(DailyDiary).order_by(DailyDiary.diary_date.desc())
+    return db.scalars(statement).all()
 
 
-def get_daily_diary(
-    db: Session,
-    diary_id,
-):
-    return (
-        db.query(DailyDiary)
-        .filter(DailyDiary.id == diary_id)
-        .first()
-    )
+def get_daily_diary(db: Session, diary_id: UUID):
+    return db.get(DailyDiary, diary_id)
 
 
-def get_daily_report(db, diary_id):
-    diary = (
-        db.query(DailyDiary)
-        .filter(DailyDiary.id == diary_id)
-        .first()
-    )
+def get_daily_report(db: Session, diary_id: UUID):
+    diary = db.get(DailyDiary, diary_id)
 
     if diary is None:
         return None
 
-    event = (
-        db.query(Event)
-        .filter(Event.id == diary.event_id)
-        .first()
-    )
+    event = db.get(Event, diary.event_id)
 
-    evidence_count = (
-        db.query(func.count(Evidence.id))
-        .filter(Evidence.event_id == diary.event_id)
-        .scalar()
+    evidence_count = db.scalar(
+        select(func.count(Evidence.id)).where(
+            Evidence.event_id == diary.event_id
+        )
     )
 
     return {

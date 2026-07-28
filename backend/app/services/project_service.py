@@ -1,3 +1,6 @@
+from uuid import UUID
+
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.project import Project
@@ -15,8 +18,9 @@ def create_project(db: Session, project: ProjectCreate) -> Project:
 
 
 def get_projects(db: Session):
-    return db.query(Project).order_by(Project.created_at.desc()).all()
+    statement = select(Project).order_by(Project.created_at.desc())
+    return db.scalars(statement).all()
 
 
-def get_project(db: Session, project_id):
-    return db.query(Project).filter(Project.id == project_id).first()
+def get_project(db: Session, project_id: UUID):
+    return db.get(Project, project_id)
