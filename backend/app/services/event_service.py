@@ -23,10 +23,6 @@ def create_event_service(db: Session, event: EventCreate) -> Event:
     return db_event
 
 
-def get_events_service(db: Session):
-    return db.scalars(select(Event)).all()
-
-
 def get_event_service(db: Session, event_id: UUID):
     return db.get(Event, event_id)
 
@@ -78,54 +74,6 @@ def search_events_by_date_service(
     )
 
     return db.scalars(statement).all()
-
-def get_event_timeline_service(db: Session):
-    stmt = select(Event).order_by(
-        Event.event_date.asc(),
-        Event.event_time.asc(),
-    )
-    return db.scalars(stmt).all()
-
-
-def get_timeline_service(db: Session, project_id: UUID):
-    stmt = (
-        select(Event)
-        .where(Event.project_id == project_id)
-        .order_by(
-            Event.event_date,
-            Event.event_time,
-        )
-    )
-    return db.scalars(stmt).all()
-
-
-def get_project_timeline_service(db: Session, project_id: UUID):
-    stmt = (
-        select(
-            Event.id.label("event_id"),
-            Event.title,
-            Event.event_type,
-            Event.event_date,
-            Event.event_time,
-            func.count(Evidence.id).label("evidence_count"),
-        )
-        .outerjoin(Evidence, Event.id == Evidence.event_id)
-        .where(Event.project_id == project_id)
-        .group_by(
-            Event.id,
-            Event.title,
-            Event.event_type,
-            Event.event_date,
-            Event.event_time,
-        )
-        .order_by(
-            Event.event_date.desc(),
-            Event.event_time.desc(),
-        )
-    )
-    # Using db.execute(stmt).mappings().all() turns rows directly into dict-like objects
-    return db.execute(stmt).mappings().all()
-
 
 def get_project_events_service(db: Session, project_id: UUID):
     stmt = (

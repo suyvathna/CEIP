@@ -10,9 +10,11 @@ from app.schemas.daily_diary import (
 from app.schemas.daily_report import DailyReportResponse
 from app.services.daily_diary_service import (
     create_daily_diary,
+    delete_daily_diary,
     get_daily_diaries,
     get_daily_diary,
     get_daily_report,
+    update_daily_diary,
 )
 
 router = APIRouter(
@@ -49,6 +51,40 @@ def read_daily_diary_endpoint(
         )
 
     return diary
+
+
+@router.put("/{diary_id}", response_model=DailyDiaryResponse)
+def update_daily_diary_endpoint(
+    diary_id: UUID,
+    diary: DailyDiaryCreate,
+    db: Session = Depends(get_db),
+):
+    updated = update_daily_diary(db, diary_id, diary)
+
+    if updated is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Daily diary not found",
+        )
+
+    return updated
+
+
+@router.delete("/{diary_id}")
+def delete_daily_diary_endpoint(
+    diary_id: UUID,
+    db: Session = Depends(get_db),
+):
+    deleted = delete_daily_diary(db, diary_id)
+
+    if deleted is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Daily diary not found",
+        )
+
+    return {"message": "Daily diary deleted successfully"}
+
 
 @router.get(
     "/{diary_id}/report",

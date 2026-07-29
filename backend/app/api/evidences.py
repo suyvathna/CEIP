@@ -22,6 +22,7 @@ from app.services.evidence_service import (
     search_evidence,
 )
 from app.services.storage_service import (
+    delete_file,
     download_file,
     upload_file,
 )
@@ -102,6 +103,7 @@ def remove_evidence(
             detail="Evidence not found",
         )
 
+    delete_file(evidence.object_name)
     delete_evidence(db, evidence)
 
     return {

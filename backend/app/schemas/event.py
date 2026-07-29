@@ -3,6 +3,10 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from app.constants.event_types import EventType
+from app.constants.severity import Severity
+from app.constants.status import RecordStatus
+
 
 class EventCreate(BaseModel):
     project_id: UUID
@@ -10,9 +14,9 @@ class EventCreate(BaseModel):
     description: str | None = None
     event_date: date
     event_time: time
-    event_type: str
+    event_type: EventType
     location: str | None = None
-    severity: str = "Low"
+    severity: Severity = Severity.LOW
 
 
 class EventResponse(BaseModel):
@@ -22,10 +26,10 @@ class EventResponse(BaseModel):
     description: str | None
     event_date: date
     event_time: time
-    event_type: str
+    event_type: EventType
     location: str | None
-    severity: str
-    status: str
+    severity: Severity
+    status: RecordStatus
     created_at: datetime
     updated_at: datetime
 

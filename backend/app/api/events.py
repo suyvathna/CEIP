@@ -10,19 +10,14 @@ from app.services.event_service import (
     create_event_service,
     delete_event_service,
     get_event_service,
-    get_events_service,
     search_events_by_date_service,
     search_events_service,
     update_event_service,
-    get_event_timeline_service,
-    get_timeline_service,
-    get_project_timeline_service,
     get_project_events_service,
     get_project_activity_service,
     filter_events_service,
     get_timeline_analytics_service,
 )
-from app.schemas.timeline import TimelineItem
 from app.schemas.activity import ActivityResponse
 from app.schemas.timeline_analytics import TimelineDay
 from app.services.auth_service import (get_current_user)
@@ -60,35 +55,6 @@ def search_event_by_date(
         db,
         start_date,
         end_date,
-    )
-
-
-@router.get("/", response_model=list[EventResponse])
-def read_events(
-    db: Session = Depends(get_db),
-):
-    return get_events_service(db)
-
-@router.get(
-    "/timeline",
-    response_model=list[EventResponse],
-)
-def read_event_timeline(
-    db: Session = Depends(get_db),
-):
-    return get_event_timeline_service(db)
-
-@router.get(
-    "/timeline/{project_id}",
-    response_model=list[EventResponse],
-)
-def read_project_event_timeline(
-    project_id: UUID,
-    db: Session = Depends(get_db),
-):
-    return get_timeline_service(
-        db,
-        project_id,
     )
 
 
@@ -211,16 +177,3 @@ def delete_event(
     return {
         "message": "Event deleted successfully",
     }
-
-@router.get(
-    "/project/{project_id}/timeline",
-    response_model=list[TimelineItem],
-)
-def project_timeline(
-    project_id: UUID,
-    db: Session = Depends(get_db),
-):
-    return get_project_timeline_service(
-        db,
-        project_id,
-    )

@@ -5,8 +5,10 @@ from app.db.session import get_db
 from app.schemas.project import ProjectCreate, ProjectResponse
 from app.services.project_service import (
     create_project,
+    delete_project,
     get_project,
     get_projects,
+    update_project,
 )
 from app.models.user import User
 
@@ -48,3 +50,36 @@ def read_project(
         )
 
     return project
+
+
+@router.put("/{project_id}", response_model=ProjectResponse)
+def update_existing_project(
+    project_id: UUID,
+    project: ProjectCreate,
+    db: Session = Depends(get_db),
+):
+    updated = update_project(db, project_id, project)
+
+    if updated is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Project not found",
+        )
+
+    return updated
+
+
+@router.delete("/{project_id}")
+def delete_existing_project(
+    project_id: UUID,
+    db: Session = Depends(get_db),
+):
+    deleted = delete_project(db, project_id)
+
+    if deleted is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Project not found",
+        )
+
+    return {"message": "Project deleted successfully"}

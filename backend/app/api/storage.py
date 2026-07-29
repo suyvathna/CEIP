@@ -1,5 +1,4 @@
-from fastapi import APIRouter, UploadFile, File
-from app.services.storage_service import upload_file
+from fastapi import APIRouter
 
 from app.storage.minio_client import client
 from app.core.config import settings
@@ -15,13 +14,4 @@ def storage_health():
         "connected": True,
         "bucket_exists": exists,
         "bucket": settings.minio_bucket,
-    }
-
-@router.post("/upload")
-def upload(file: UploadFile = File(...)):
-    object_name = upload_file(file)
-
-    return {
-        "uploaded": True,
-        "object_name": object_name,
     }

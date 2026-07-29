@@ -30,6 +30,33 @@ def get_daily_diary(db: Session, diary_id: UUID):
     return db.get(DailyDiary, diary_id)
 
 
+def update_daily_diary(db: Session, diary_id: UUID, diary: DailyDiaryCreate):
+    db_diary = db.get(DailyDiary, diary_id)
+
+    if not db_diary:
+        return None
+
+    for key, value in diary.model_dump().items():
+        setattr(db_diary, key, value)
+
+    db.commit()
+    db.refresh(db_diary)
+
+    return db_diary
+
+
+def delete_daily_diary(db: Session, diary_id: UUID):
+    db_diary = db.get(DailyDiary, diary_id)
+
+    if not db_diary:
+        return None
+
+    db.delete(db_diary)
+    db.commit()
+
+    return db_diary
+
+
 def get_daily_report(db: Session, diary_id: UUID):
     diary = db.get(DailyDiary, diary_id)
 

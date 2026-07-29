@@ -32,6 +32,7 @@ class DailyDiaryResponse(BaseModel):
     engineer_instruction: str | None
     tomorrow_plan: str | None
     remarks: str | None
+    diary_date: date
     created_at: datetime
     updated_at: datetime
 

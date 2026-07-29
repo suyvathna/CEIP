@@ -30,3 +30,9 @@ def download_file(object_name: str):
         settings.minio_bucket,
         object_name,
     )
+
+def delete_file(object_name: str):
+    client.remove_object(
+        settings.minio_bucket,
+        object_name,
+    )

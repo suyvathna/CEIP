@@ -3,11 +3,13 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from app.constants.event_types import EventType
 
-class TimelineEvent(BaseModel):
+
+class TimelineDayEvent(BaseModel):
     id: UUID
     title: str
-    event_type: str
+    event_type: EventType
 
     model_config = {
         "from_attributes": True
@@ -17,4 +19,4 @@ class TimelineEvent(BaseModel):
 class TimelineDay(BaseModel):
     event_date: date
     total_events: int
-    events: list[TimelineEvent]
+    events: list[TimelineDayEvent]

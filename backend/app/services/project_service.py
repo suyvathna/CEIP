@@ -24,3 +24,30 @@ def get_projects(db: Session):
 
 def get_project(db: Session, project_id: UUID):
     return db.get(Project, project_id)
+
+
+def update_project(db: Session, project_id: UUID, project: ProjectCreate):
+    db_project = db.get(Project, project_id)
+
+    if not db_project:
+        return None
+
+    for key, value in project.model_dump().items():
+        setattr(db_project, key, value)
+
+    db.commit()
+    db.refresh(db_project)
+
+    return db_project
+
+
+def delete_project(db: Session, project_id: UUID):
+    db_project = db.get(Project, project_id)
+
+    if not db_project:
+        return None
+
+    db.delete(db_project)
+    db.commit()
+
+    return db_project

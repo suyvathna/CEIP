@@ -3,13 +3,17 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from app.constants.event_types import EventType
+from app.constants.severity import Severity
+from app.constants.status import RecordStatus
+
 
 class RecentEvent(BaseModel):
     id: UUID
     title: str
-    event_type: str
-    severity: str
-    status: str
+    event_type: EventType
+    severity: Severity
+    status: RecordStatus
     created_at: datetime
 
     model_config = {
