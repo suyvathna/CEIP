@@ -9,6 +9,7 @@ from app.api.dashboard import router as dashboard_router
 from app.api.timeline import router as timeline_router
 from app.api.users import router as user_router
 from app.api.auth import router as auth_router
+from app.api.intelligence import router as intelligence_router
 
 api_router = APIRouter()
 
@@ -21,3 +22,4 @@ api_router.include_router(dashboard_router)
 api_router.include_router(timeline_router)
 api_router.include_router(user_router)
 api_router.include_router(auth_router)
+api_router.include_router(intelligence_router)

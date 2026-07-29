@@ -107,3 +107,45 @@ def get_current_user(
         raise credentials_exception
 
     return user
+
+def require_admin(
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != "Admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Admin access required",
+        )
+
+    return current_user
+
+
+def require_engineer(
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role not in [
+        "Admin",
+        "Engineer",
+    ]:
+        raise HTTPException(
+            status_code=403,
+            detail="Engineer access required",
+        )
+
+    return current_user
+
+
+def require_viewer(
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role not in [
+        "Admin",
+        "Engineer",
+        "Viewer",
+    ]:
+        raise HTTPException(
+            status_code=403,
+            detail="Permission denied",
+        )
+
+    return current_user
