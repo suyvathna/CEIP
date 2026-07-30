@@ -23,6 +23,14 @@ function EditProjectPage() {
           city: project.city,
           planned_start: project.planned_start,
           planned_finish: project.planned_finish,
+          // Must be resent on every save - the update endpoint has no
+          // partial-update semantics, so omitting these would silently
+          // reset a project's claim-clock periods back to the FIDIC
+          // defaults even if they'd been customized.
+          notice_period_days: project.notice_period_days,
+          detailed_claim_period_days: project.detailed_claim_period_days,
+          engineer_late_notice_flag_days: project.engineer_late_notice_flag_days,
+          engineer_response_period_days: project.engineer_response_period_days,
         });
       })
       .catch((err) => setError(err.message));
@@ -37,7 +45,13 @@ function EditProjectPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await updateProject(projectId, formData);
+      await updateProject(projectId, {
+        ...formData,
+        notice_period_days: Number(formData.notice_period_days),
+        detailed_claim_period_days: Number(formData.detailed_claim_period_days),
+        engineer_late_notice_flag_days: Number(formData.engineer_late_notice_flag_days),
+        engineer_response_period_days: Number(formData.engineer_response_period_days),
+      });
       navigate(`/projects/${projectId}`);
     } catch (err) {
       setError(err.message);
@@ -93,6 +107,29 @@ function EditProjectPage() {
           Planned finish
           <input type="date" name="planned_finish" value={formData.planned_finish} onChange={handleChange} required />
         </label>
+
+        <fieldset>
+          <legend>
+            FIDIC Sub-Clause 20.2 claim periods (days) - override if the
+            Particular Conditions amend the unamended FIDIC 2017 defaults
+          </legend>
+          <label>
+            Notice of Claim period (20.2.1)
+            <input type="number" min="1" name="notice_period_days" value={formData.notice_period_days} onChange={handleChange} required />
+          </label>
+          <label>
+            Fully detailed claim period (20.2.4)
+            <input type="number" min="1" name="detailed_claim_period_days" value={formData.detailed_claim_period_days} onChange={handleChange} required />
+          </label>
+          <label>
+            Engineer's late-notice flag window (20.2.2)
+            <input type="number" min="1" name="engineer_late_notice_flag_days" value={formData.engineer_late_notice_flag_days} onChange={handleChange} required />
+          </label>
+          <label>
+            Engineer's response period (20.2.5)
+            <input type="number" min="1" name="engineer_response_period_days" value={formData.engineer_response_period_days} onChange={handleChange} required />
+          </label>
+        </fieldset>
 
         {error && <p className="form-error">{error}</p>}
 

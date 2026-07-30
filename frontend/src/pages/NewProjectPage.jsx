@@ -13,6 +13,15 @@ const initialFormState = {
   city: "",
   planned_start: "",
   planned_finish: "",
+  // FIDIC 2017 Sub-Clause 20.2 default periods (days). These are
+  // contract defaults, not fixed law - Particular Conditions (and the
+  // MDB Harmonised Edition common on ADB/World Bank-funded work in
+  // Cambodia) frequently amend them, so they're editable per project
+  // rather than hardcoded.
+  notice_period_days: 28,
+  detailed_claim_period_days: 84,
+  engineer_late_notice_flag_days: 14,
+  engineer_response_period_days: 42,
 };
 
 function NewProjectPage() {
@@ -30,7 +39,13 @@ function NewProjectPage() {
     setSubmitting(true);
     setError(null);
     try {
-      const newProject = await createProject(formData);
+      const newProject = await createProject({
+        ...formData,
+        notice_period_days: Number(formData.notice_period_days),
+        detailed_claim_period_days: Number(formData.detailed_claim_period_days),
+        engineer_late_notice_flag_days: Number(formData.engineer_late_notice_flag_days),
+        engineer_response_period_days: Number(formData.engineer_response_period_days),
+      });
       navigate(`/projects/${newProject.id}`);
     } catch (err) {
       setError(err.message);
@@ -83,6 +98,30 @@ function NewProjectPage() {
           Planned finish
           <input type="date" name="planned_finish" value={formData.planned_finish} onChange={handleChange} required />
         </label>
+
+        <fieldset>
+          <legend>
+            FIDIC Sub-Clause 20.2 claim periods (days) - defaults are the
+            unamended FIDIC 2017 Red Book; override if the Particular
+            Conditions amend them
+          </legend>
+          <label>
+            Notice of Claim period (20.2.1)
+            <input type="number" min="1" name="notice_period_days" value={formData.notice_period_days} onChange={handleChange} required />
+          </label>
+          <label>
+            Fully detailed claim period (20.2.4)
+            <input type="number" min="1" name="detailed_claim_period_days" value={formData.detailed_claim_period_days} onChange={handleChange} required />
+          </label>
+          <label>
+            Engineer's late-notice flag window (20.2.2)
+            <input type="number" min="1" name="engineer_late_notice_flag_days" value={formData.engineer_late_notice_flag_days} onChange={handleChange} required />
+          </label>
+          <label>
+            Engineer's response period (20.2.5)
+            <input type="number" min="1" name="engineer_response_period_days" value={formData.engineer_response_period_days} onChange={handleChange} required />
+          </label>
+        </fieldset>
 
         {error && <p className="form-error">{error}</p>}
 

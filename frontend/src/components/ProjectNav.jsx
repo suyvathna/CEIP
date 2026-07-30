@@ -6,11 +6,14 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import TimelineIcon from "@mui/icons-material/Timeline";
 import SummarizeIcon from "@mui/icons-material/Summarize";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import GavelIcon from "@mui/icons-material/Gavel";
+import AccountTreeIcon from "@mui/icons-material/AccountTree";
 
 /**
- * Shared tab strip for the four project-scoped screens (overview, dashboard,
- * timeline, report). Each screen is its own route, so navigation happens via
- * plain router links rather than in-page tab switching.
+ * Shared tab strip for the project-scoped screens (overview, dashboard,
+ * timeline, report, claims, programme). Each screen is its own route, so
+ * navigation happens via plain router links rather than in-page tab
+ * switching.
  */
 function ProjectNav({ projectId, active }) {
   return (
@@ -39,6 +42,22 @@ function ProjectNav({ projectId, active }) {
           iconPosition="start"
           component={RouterLink}
           to={`/projects/${projectId}/timeline`}
+        />
+        <Tab
+          value="claims"
+          label="Claims"
+          icon={<GavelIcon fontSize="small" />}
+          iconPosition="start"
+          component={RouterLink}
+          to={`/projects/${projectId}/claims`}
+        />
+        <Tab
+          value="programme"
+          label="Programme"
+          icon={<AccountTreeIcon fontSize="small" />}
+          iconPosition="start"
+          component={RouterLink}
+          to={`/projects/${projectId}/programme`}
         />
         <Tab
           value="report"

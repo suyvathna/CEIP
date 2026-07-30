@@ -34,7 +34,8 @@ function NewDiaryPage() {
     try {
       await createDailyDiary({
         ...formData,
-        event_id: eventId,
+        project_id: projectId,
+        event_id: eventId || null,
         manpower: formData.manpower === "" ? null : Number(formData.manpower),
       });
       navigate(`/projects/${projectId}`);

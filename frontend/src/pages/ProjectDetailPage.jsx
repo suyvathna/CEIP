@@ -163,14 +163,24 @@ function ProjectDetailPage() {
         sx={{ justifyContent: "space-between", alignItems: "center" }}
       >
         <Typography variant="h6">Events</Typography>
-        <Button
-          component={RouterLink}
-          to={`/projects/${projectId}/events/new`}
-          startIcon={<AddIcon fontSize="small" />}
-          variant="contained"
-        >
-          New Event
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button
+            component={RouterLink}
+            to={`/projects/${projectId}/diary/new`}
+            startIcon={<AddIcon fontSize="small" />}
+            variant="outlined"
+          >
+            New Diary Entry
+          </Button>
+          <Button
+            component={RouterLink}
+            to={`/projects/${projectId}/events/new`}
+            startIcon={<AddIcon fontSize="small" />}
+            variant="contained"
+          >
+            New Event
+          </Button>
+        </Stack>
       </Stack>
 
       {eventsQuery.isLoading && <CircularProgress size={24} />}

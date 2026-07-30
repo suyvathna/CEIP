@@ -19,6 +19,11 @@ import ProjectReportPage from "./pages/ProjectReportPage";
 import SearchResultsPage from "./pages/SearchResultsPage";
 import EventRedirectPage from "./pages/EventRedirectPage";
 import DiaryRedirectPage from "./pages/DiaryRedirectPage";
+import ClaimListPage from "./pages/ClaimListPage";
+import NewClaimPage from "./pages/NewClaimPage";
+import ClaimDetailPage from "./pages/ClaimDetailPage";
+import ProgrammePage from "./pages/ProgrammePage";
+import EngineerClaimReviewPage from "./pages/EngineerClaimReviewPage";
 
 function App() {
   return (
@@ -26,6 +31,9 @@ function App() {
       <Route element={<Layout />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        {/* Public, no-account Engineer entry point via a magic link -
+            deliberately outside ProtectedRoute, same as /login. */}
+        <Route path="/review/:token" element={<EngineerClaimReviewPage />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/deadlines" element={<DeadlinesDashboardPage />} />
           <Route path="/search" element={<SearchResultsPage />} />
@@ -38,6 +46,11 @@ function App() {
           <Route path="/projects/:projectId/dashboard" element={<DashboardPage />} />
           <Route path="/projects/:projectId/timeline" element={<TimelinePage />} />
           <Route path="/projects/:projectId/report" element={<ProjectReportPage />} />
+          <Route path="/projects/:projectId/claims" element={<ClaimListPage />} />
+          <Route path="/projects/:projectId/claims/new" element={<NewClaimPage />} />
+          <Route path="/projects/:projectId/claims/:claimId" element={<ClaimDetailPage />} />
+          <Route path="/projects/:projectId/programme" element={<ProgrammePage />} />
+          <Route path="/projects/:projectId/diary/new" element={<NewDiaryPage />} />
           <Route path="/projects/:projectId/events/new" element={<NewEventPage />} />
           <Route path="/projects/:projectId/events/:eventId" element={<EventDetailPage />} />
           <Route path="/projects/:projectId/events/:eventId/edit" element={<EditEventPage />} />
