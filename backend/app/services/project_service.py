@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from psycopg2 import IntegrityError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -47,7 +48,14 @@ def delete_project(db: Session, project_id: UUID):
     if not db_project:
         return None
 
-    db.delete(db_project)
-    db.commit()
+    try:
+        db.delete(db_project)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise ValueError(
+            "This project still has events recorded under it. "
+            "Delete those first, or keep the project as a record."
+        )
 
     return db_project

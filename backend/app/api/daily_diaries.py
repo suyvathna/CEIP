@@ -15,6 +15,7 @@ from app.services.daily_diary_service import (
     get_daily_diary,
     get_daily_report,
     update_daily_diary,
+    get_diaries_for_event,
 )
 
 router = APIRouter(
@@ -36,6 +37,12 @@ def read_daily_diaries_endpoint(
 ):
     return get_daily_diaries(db)
 
+@router.get("/event/{event_id}", response_model=list[DailyDiaryResponse])
+def read_diaries_for_event_endpoint(
+    event_id: UUID,
+    db: Session = Depends(get_db),
+):
+    return get_diaries_for_event(db, event_id)
 
 @router.get("/{diary_id}", response_model=DailyDiaryResponse)
 def read_daily_diary_endpoint(

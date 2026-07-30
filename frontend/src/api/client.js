@@ -1,12 +1,31 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const TOKEN_KEY = "ceip_token";
+
+export function setToken(token) {
+  localStorage.setItem(TOKEN_KEY, token);
+}
+
+export function clearToken() {
+  localStorage.removeItem(TOKEN_KEY);
+}
+
+export function getToken() {
+  return localStorage.getItem(TOKEN_KEY);
+}
 
 export async function apiRequest(path, options = {}) {
+  const isFormData = options.body instanceof FormData;
+  const token = getToken();
+
+  const headers = {
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...options.headers,
+  };
+
   const response = await fetch(`${BASE_URL}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
     ...options,
+    headers,
   });
 
   if (!response.ok) {

@@ -14,3 +14,16 @@ export function createProject(data) {
     body: JSON.stringify(data),
   });
 }
+
+export function updateProject(projectId, data) {
+  return apiRequest(`/projects/${projectId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteProject(projectId) {
+  return apiRequest(`/projects/${projectId}`, {
+    method: "DELETE",
+  });
+}

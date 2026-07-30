@@ -25,6 +25,13 @@ def get_daily_diaries(db: Session):
     statement = select(DailyDiary).order_by(DailyDiary.diary_date.desc())
     return db.scalars(statement).all()
 
+def get_diaries_for_event(db: Session, event_id: UUID):
+    statement = (
+        select(DailyDiary)
+        .where(DailyDiary.event_id == event_id)
+        .order_by(DailyDiary.diary_date.desc())
+    )
+    return db.scalars(statement).all()
 
 def get_daily_diary(db: Session, diary_id: UUID):
     return db.get(DailyDiary, diary_id)

@@ -74,7 +74,13 @@ def delete_existing_project(
     project_id: UUID,
     db: Session = Depends(get_db),
 ):
-    deleted = delete_project(db, project_id)
+    try:
+        deleted = delete_project(db, project_id)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=409,
+            detail=str(e),
+        )
 
     if deleted is None:
         raise HTTPException(
