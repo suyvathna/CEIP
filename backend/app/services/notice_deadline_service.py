@@ -17,25 +17,37 @@ def get_today() -> date:
     return datetime.now(PROJECT_TIMEZONE).date()
 
 
-def calculate_notice_deadline(event_date: date) -> date:
+def calculate_notice_deadline(
+    event_date: date,
+    period_days: int = NOTICE_PERIOD_DAYS,
+) -> date:
     """
     FIDIC Sub-Clause 20.1 (1999) / 20.2.1 (2017): notice of claim must be
-    given no later than 28 days after the date the contractor became aware,
-    or should have become aware, of the event giving rise to the claim.
+    given no later than 28 days (the unamended default - see period_days)
+    after the date the contractor became aware, or should have become
+    aware, of the event giving rise to the claim.
 
     We use event_date (the date logged for the site event) as the practical
     proxy for "awareness date" - it's the earliest contemporaneous record
     available, and the one this system already captures.
+
+    period_days defaults to the FIDIC unamended 28 days but should be
+    passed explicitly from the owning Project's notice_period_days where
+    available, since Particular Conditions frequently amend this number.
     """
-    return event_date + timedelta(days=NOTICE_PERIOD_DAYS)
+    return event_date + timedelta(days=period_days)
 
 
-def days_remaining(event_date: date, today: date) -> int:
+def days_remaining(
+    event_date: date,
+    today: date,
+    period_days: int = NOTICE_PERIOD_DAYS,
+) -> int:
     """
     Days left until the notice deadline. Negative means the deadline has
     already passed.
     """
-    deadline = calculate_notice_deadline(event_date)
+    deadline = calculate_notice_deadline(event_date, period_days)
     return (deadline - today).days
 
 
@@ -43,6 +55,7 @@ def get_notice_status(
     event_date: date,
     notice_given_date: date | None,
     today: date,
+    period_days: int = NOTICE_PERIOD_DAYS,
 ) -> str:
     """
     One of:
@@ -51,9 +64,9 @@ def get_notice_status(
       (FIDIC's time-bar is absolute - submitting late notice does not cure
       it, this state exists purely as an honest historical record)
     - "overdue": the deadline has passed and no notice was ever given
-    - "pending": still within the 28-day window, no notice given yet
+    - "pending": still within the notice window, no notice given yet
     """
-    deadline = calculate_notice_deadline(event_date)
+    deadline = calculate_notice_deadline(event_date, period_days)
 
     if notice_given_date is not None:
         return "given_on_time" if notice_given_date <= deadline else "given_late"

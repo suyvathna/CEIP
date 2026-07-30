@@ -17,8 +17,10 @@ from app.schemas.evidence import EvidenceResponse
 from app.services.evidence_service import (
     create_evidence,
     delete_evidence,
+    get_access_log,
     get_evidence,
     get_evidences,
+    log_access,
     search_evidence,
 )
 from app.services.storage_service import (
@@ -49,9 +51,12 @@ def upload_evidence(
         filename=uploaded["filename"],
         object_name=uploaded["object_name"],
         content_type=uploaded["content_type"],
+        sha256_hash=uploaded["sha256_hash"],
     )
 
-    return create_evidence(db, evidence)
+    created = create_evidence(db, evidence)
+    log_access(db, created.id, "UPLOAD")
+    return created
 
 
 @router.get("/", response_model=list[EvidenceResponse])
@@ -87,7 +92,24 @@ def read_evidence(
             detail="Evidence not found",
         )
 
+    log_access(db, evidence.id, "VIEW")
     return evidence
+
+
+@router.get("/{evidence_id}/access-log")
+def read_evidence_access_log(
+    evidence_id: UUID,
+    db: Session = Depends(get_db),
+):
+    evidence = get_evidence(db, evidence_id)
+
+    if evidence is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Evidence not found",
+        )
+
+    return get_access_log(db, evidence_id)
 
 
 @router.delete("/{evidence_id}")
@@ -101,6 +123,18 @@ def remove_evidence(
         raise HTTPException(
             status_code=404,
             detail="Evidence not found",
+        )
+
+    # Check the lock BEFORE touching storage - deleting the object first
+    # and only then discovering it's locked would destroy the file while
+    # the DB record survives, which is worse than either failure alone.
+    if evidence.is_locked:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "This evidence is locked because it's attached to a "
+                "submitted claim and can no longer be deleted."
+            ),
         )
 
     delete_file(evidence.object_name)
@@ -125,6 +159,7 @@ def download_evidence(
         )
 
     file = download_file(evidence.object_name)
+    log_access(db, evidence.id, "DOWNLOAD")
 
     return StreamingResponse(
         file,

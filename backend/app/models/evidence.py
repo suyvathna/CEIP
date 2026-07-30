@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -27,6 +27,23 @@ class Evidence(Base):
     object_name: Mapped[str] = mapped_column(String(255))
 
     content_type: Mapped[str] = mapped_column(String(100))
+
+    # Captured at upload from the actual file bytes. This is what lets the
+    # platform stand behind a piece of evidence as genuinely unaltered
+    # since the moment it was submitted - a hash mismatch on re-download
+    # would mean the underlying object was swapped after the fact.
+    sha256_hash: Mapped[str | None] = mapped_column(String(64))
+
+    # Set once evidence is attached to a submitted Notice of Claim or a
+    # fully detailed claim (see claim_service.py). Locked evidence can
+    # still be viewed/downloaded but the API refuses to delete it, so a
+    # claim's supporting record can't quietly change after the Engineer
+    # has started relying on it.
+    is_locked: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default="false",
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

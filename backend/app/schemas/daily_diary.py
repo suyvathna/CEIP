@@ -5,7 +5,8 @@ from pydantic import BaseModel
 
 
 class DailyDiaryCreate(BaseModel):
-    event_id: UUID
+    project_id: UUID
+    event_id: UUID | None = None
     work_completed: str | None = None
     manpower: int | None = None
     equipment: str | None = None
@@ -17,11 +18,13 @@ class DailyDiaryCreate(BaseModel):
     tomorrow_plan: str | None = None
     remarks: str | None = None
     diary_date: date
+    additional_event_ids: list[UUID] = []
 
 
 class DailyDiaryResponse(BaseModel):
     id: UUID
-    event_id: UUID
+    project_id: UUID
+    event_id: UUID | None
     work_completed: str | None
     manpower: int | None
     equipment: str | None
@@ -35,6 +38,7 @@ class DailyDiaryResponse(BaseModel):
     diary_date: date
     created_at: datetime
     updated_at: datetime
+    linked_event_ids: list[UUID] = []
 
     model_config = {
         "from_attributes": True

@@ -8,10 +8,41 @@ from sqlalchemy.exc import IntegrityError
 from app.models.daily_diary import DailyDiary
 from app.models.evidence import Evidence
 from app.models.event import Event
+from app.models.project import Project
 from app.schemas.event import EventCreate
+from app.services.notice_deadline_service import NOTICE_PERIOD_DAYS
 
 
+def attach_notice_periods(db: Session, events):
+    """
+    Hydrates the transient notice_period_days attribute EventResponse's
+    computed fields read from, so the deadline math respects each event's
+    owning project's configured period instead of always assuming the
+    FIDIC unamended 28 days. Not a DB column - just carried on the ORM
+    instance for the duration of this request/response cycle.
+    """
+    single = isinstance(events, Event)
+    event_list = [events] if single else list(events)
 
+    project_ids = {e.project_id for e in event_list}
+
+    if project_ids:
+        projects = {
+            p.id: p
+            for p in db.scalars(
+                select(Project).where(Project.id.in_(project_ids))
+            ).all()
+        }
+    else:
+        projects = {}
+
+    for e in event_list:
+        project = projects.get(e.project_id)
+        e.notice_period_days = (
+            project.notice_period_days if project else NOTICE_PERIOD_DAYS
+        )
+
+    return event_list[0] if single else event_list
 
 
 def create_event_service(db: Session, event: EventCreate) -> Event:
@@ -21,11 +52,12 @@ def create_event_service(db: Session, event: EventCreate) -> Event:
     db.commit()
     db.refresh(db_event)
 
-    return db_event
+    return attach_notice_periods(db, db_event)
 
 
 def get_event_service(db: Session, event_id: UUID):
-    return db.get(Event, event_id)
+    event = db.get(Event, event_id)
+    return attach_notice_periods(db, event) if event else None
 
 def mark_notice_given_service(db: Session, event_id: UUID, notice_given_date: date):
     event = db.get(Event, event_id)
@@ -38,7 +70,7 @@ def mark_notice_given_service(db: Session, event_id: UUID, notice_given_date: da
     db.commit()
     db.refresh(event)
 
-    return event
+    return attach_notice_periods(db, event)
 
 def update_event_service(db: Session, event_id: UUID, event: EventCreate):
     db_event = db.get(Event, event_id)
@@ -52,7 +84,7 @@ def update_event_service(db: Session, event_id: UUID, event: EventCreate):
     db.commit()
     db.refresh(db_event)
 
-    return db_event
+    return attach_notice_periods(db, db_event)
 
 
 def delete_event_service(db: Session, event_id: UUID):
@@ -76,7 +108,7 @@ def delete_event_service(db: Session, event_id: UUID):
 
 def search_events_service(db: Session, keyword: str):
     statement = select(Event).where(Event.title.ilike(f"%{keyword}%"))
-    return db.scalars(statement).all()
+    return attach_notice_periods(db, db.scalars(statement).all())
 
 
 def search_events_by_date_service(
@@ -93,7 +125,7 @@ def search_events_by_date_service(
         .order_by(Event.event_date)
     )
 
-    return db.scalars(statement).all()
+    return attach_notice_periods(db, db.scalars(statement).all())
 
 def get_project_events_service(db: Session, project_id: UUID):
     stmt = (
@@ -104,7 +136,7 @@ def get_project_events_service(db: Session, project_id: UUID):
             Event.event_time,
         )
     )
-    return db.scalars(stmt).all()
+    return attach_notice_periods(db, db.scalars(stmt).all())
 
 
 def get_project_activity_service(db: Session, project_id: UUID):
@@ -177,7 +209,7 @@ def filter_events_service(
         Event.event_time.desc(),
     )
 
-    return db.scalars(stmt).all()
+    return attach_notice_periods(db, db.scalars(stmt).all())
 
 
 def get_timeline_analytics_service(

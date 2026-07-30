@@ -55,10 +55,11 @@ def _get_project_event_counts(db: Session, project_id: UUID) -> dict:
         )
     )
 
+    # Diaries are project-owned directly now (see DailyDiary.project_id) -
+    # counting through a join on event_id would silently undercount any
+    # diary entry that isn't tied to a single primary event.
     total_daily_diaries = db.scalar(
-        select(func.count(DailyDiary.id))
-        .join(Event, Event.id == DailyDiary.event_id)
-        .where(Event.project_id == project_id)
+        select(func.count(DailyDiary.id)).where(DailyDiary.project_id == project_id)
     )
 
     total_evidence = db.scalar(

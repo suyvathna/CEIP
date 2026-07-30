@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, String, func
+from sqlalchemy import Date, DateTime, Integer, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -40,6 +40,35 @@ class Project(Base):
     status: Mapped[str] = mapped_column(
         String(50),
         default="Planning",
+    )
+
+    # FIDIC 2017 Sub-Clause 20.2 default periods. These are contract
+    # defaults, not law - Particular Conditions (and the MDB Harmonised
+    # Edition commonly used on ADB/World Bank-funded work in Cambodia)
+    # frequently amend them, so they live per-project rather than as a
+    # hardcoded constant.
+    notice_period_days: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        server_default="28",
+    )
+
+    detailed_claim_period_days: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        server_default="84",
+    )
+
+    engineer_late_notice_flag_days: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        server_default="14",
+    )
+
+    engineer_response_period_days: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        server_default="42",
     )
 
     created_at: Mapped[datetime] = mapped_column(

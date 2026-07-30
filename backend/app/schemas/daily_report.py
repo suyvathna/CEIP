@@ -3,5 +3,5 @@ from app.schemas.event import EventResponse
 
 
 class DailyReportResponse(DailyDiaryResponse):
-    event: EventResponse
+    event: EventResponse | None
     evidence_count: int

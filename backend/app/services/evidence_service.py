@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.evidence import Evidence
+from app.models.evidence_access_log import EvidenceAccessLog
 
 
 def create_evidence(db: Session, evidence: Evidence):
@@ -24,6 +25,19 @@ def get_evidence(db: Session, evidence_id: UUID):
 
 
 def delete_evidence(db: Session, evidence: Evidence):
+    """
+    Raises ValueError instead of deleting when the evidence has been
+    locked (attached to a submitted Notice of Claim or fully detailed
+    claim - see claim_service.submit_notice) so a claim's supporting
+    record can't quietly disappear once the Engineer may already be
+    relying on it.
+    """
+    if evidence.is_locked:
+        raise ValueError(
+            "This evidence is locked because it's attached to a submitted "
+            "claim and can no longer be deleted."
+        )
+
     db.delete(evidence)
     db.commit()
 
@@ -43,4 +57,29 @@ def search_evidence(
 
     statement = statement.order_by(Evidence.created_at.desc())
 
+    return db.scalars(statement).all()
+
+
+def log_access(
+    db: Session,
+    evidence_id: UUID,
+    action: str,
+    accessed_by_email: str | None = None,
+):
+    db.add(
+        EvidenceAccessLog(
+            evidence_id=evidence_id,
+            action=action,
+            accessed_by_email=accessed_by_email,
+        )
+    )
+    db.commit()
+
+
+def get_access_log(db: Session, evidence_id: UUID):
+    statement = (
+        select(EvidenceAccessLog)
+        .where(EvidenceAccessLog.evidence_id == evidence_id)
+        .order_by(EvidenceAccessLog.accessed_at.desc())
+    )
     return db.scalars(statement).all()

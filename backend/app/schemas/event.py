@@ -7,6 +7,7 @@ from app.constants.event_types import EventType
 from app.constants.severity import Severity
 from app.constants.status import RecordStatus
 from app.services.notice_deadline_service import (
+    NOTICE_PERIOD_DAYS,
     calculate_notice_deadline,
     days_remaining,
     get_notice_status,
@@ -44,6 +45,14 @@ class EventResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    # Not a column on Event - hydrated onto the ORM object by
+    # event_service.py from the owning Project's notice_period_days
+    # before serialization, so the deadline math below respects any
+    # per-project override instead of always assuming the FIDIC
+    # unamended 28 days. Falls back to that default if a service call
+    # site ever forgets to hydrate it.
+    notice_period_days: int = NOTICE_PERIOD_DAYS
+
     model_config = {
         "from_attributes": True
     }
@@ -51,7 +60,7 @@ class EventResponse(BaseModel):
     @computed_field
     @property
     def notice_deadline(self) -> date:
-        return calculate_notice_deadline(self.event_date)
+        return calculate_notice_deadline(self.event_date, self.notice_period_days)
 
     @computed_field
     @property
@@ -60,9 +69,10 @@ class EventResponse(BaseModel):
             self.event_date,
             self.notice_given_date,
             get_today(),
+            self.notice_period_days,
         )
 
     @computed_field
     @property
     def notice_days_remaining(self) -> int:
-        return days_remaining(self.event_date, get_today())
+        return days_remaining(self.event_date, get_today(), self.notice_period_days)

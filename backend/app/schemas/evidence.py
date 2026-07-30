@@ -10,6 +10,8 @@ class EvidenceResponse(BaseModel):
     filename: str
     object_name: str
     content_type: str
+    sha256_hash: str | None
+    is_locked: bool
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
