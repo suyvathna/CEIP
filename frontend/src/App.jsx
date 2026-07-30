@@ -11,6 +11,7 @@ import NewDiaryPage from "./pages/NewDiaryPage";
 import NewEvidencePage from "./pages/NewEvidencePage";
 import LoginPage from "./pages/LoginPage";
 import DeadlinesDashboardPage from "./pages/DeadlinesDashboardPage";
+import EditEventPage from "./pages/EditEventPage";
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
           <Route path="/projects/:projectId/edit" element={<EditProjectPage />} />
           <Route path="/projects/:projectId/events/new" element={<NewEventPage />} />
           <Route path="/projects/:projectId/events/:eventId" element={<EventDetailPage />} />
+          <Route path="/projects/:projectId/events/:eventId/edit" element={<EditEventPage />} />
           <Route path="/projects/:projectId/events/:eventId/diary/new" element={<NewDiaryPage />} />
           <Route path="/projects/:projectId/events/:eventId/evidence/new" element={<NewEvidencePage />} />
         </Route>

@@ -25,3 +25,16 @@ export function markNoticeGiven(eventId, noticeGivenDate) {
 export function getAllEvents() {
   return apiRequest("/events/filter");
 }
+
+export function updateEvent(eventId, data) {
+  return apiRequest(`/events/${eventId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteEvent(eventId) {
+  return apiRequest(`/events/${eventId}`, {
+    method: "DELETE",
+  });
+}

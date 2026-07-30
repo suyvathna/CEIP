@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { getEvent, markNoticeGiven } from "../api/events";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { getEvent, markNoticeGiven, deleteEvent } from "../api/events";
 import { getEventDiaries } from "../api/dailyDiaries";
 import { getEventEvidence } from "../api/evidence";
 
@@ -24,11 +24,13 @@ function todayLocalISODate() {
 
 function EventDetailPage() {
   const { projectId, eventId } = useParams();
+  const navigate = useNavigate();
   const [event, setEvent] = useState(null);
   const [diaries, setDiaries] = useState([]);
   const [evidence, setEvidence] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
   const [noticeDate, setNoticeDate] = useState(todayLocalISODate());
   const [submittingNotice, setSubmittingNotice] = useState(false);
 
@@ -47,6 +49,20 @@ function EventDetailPage() {
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, [eventId]);
+
+  async function handleDelete() {
+    const confirmed = window.confirm(
+      `Delete "${event.title}"? This cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await deleteEvent(eventId);
+      navigate(`/projects/${projectId}`);
+    } catch (err) {
+      setDeleteError(err.message);
+    }
+  }
 
   async function handleMarkNoticeGiven(e) {
     e.preventDefault();
@@ -68,7 +84,14 @@ function EventDetailPage() {
   return (
     <div className="event-detail">
       <Link to={`/projects/${projectId}`}>&larr; Back to project</Link>
-      <h1>{event.title}</h1>
+      <div className="page-header">
+        <h1>{event.title}</h1>
+        <div className="project-actions">
+          <Link to={`/projects/${projectId}/events/${eventId}/edit`}>Edit</Link>
+          <button onClick={handleDelete} className="danger-button">Delete</button>
+        </div>
+      </div>
+      {deleteError && <p className="form-error">{deleteError}</p>}
       <p>
         {event.event_date}{" "}
         {event.event_time ? `at ${event.event_time}` : ""}
@@ -161,7 +184,6 @@ function EventDetailPage() {
       ) : (
         evidence.map((item) => (
           <div key={item.id} className="evidence-item">
-            {/* Fixed missing opening <a> tag */}
             <a
               href={`${import.meta.env.VITE_API_BASE_URL}/evidence/download/${item.id}`}
               target="_blank"
