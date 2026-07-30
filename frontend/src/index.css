@@ -230,6 +230,57 @@ form button {
   font-size: 14px;
 }
 
+.notice-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin: 20px 0;
+}
+
+.notice-badge {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 999px;
+  margin-bottom: 8px;
+}
+
+.notice-pending {
+  background: #dce7fb;
+  color: #1c4f9c;
+}
+
+.notice-overdue {
+  background: #fbdcdc;
+  color: #a3231c;
+}
+
+.notice-given_on_time {
+  background: #dcefe1;
+  color: #1f6b3a;
+}
+
+.notice-given_late {
+  background: #fde8cc;
+  color: #8a5300;
+}
+
+.notice-form {
+  flex-direction: row;
+  align-items: flex-end;
+  max-width: none;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.notice-form label {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
 .project-actions {
   display: flex;
   align-items: center;
@@ -251,4 +302,43 @@ form button {
   border-radius: var(--radius);
   padding: 12px 16px;
   margin-bottom: 10px;
+}
+
+.app-header-links {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.deadline-item {
+  display: block;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow 0.15s;
+}
+
+.deadline-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.deadline-item h4 {
+  margin: 4px 0;
+  font-size: 16px;
+}
+
+.deadline-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.deadline-days {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-muted);
 }

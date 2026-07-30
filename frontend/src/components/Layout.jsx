@@ -7,7 +7,10 @@ function Layout() {
   return (
     <div className="app-layout">
       <header className="app-header">
-        <Link to="/" className="app-title">CEIP</Link>
+        <div className="app-header-links">
+          <Link to="/" className="app-title">CEIP</Link>
+          {loggedIn && <Link to="/deadlines">Deadlines</Link>}
+        </div>
         {loggedIn ? (
           <button onClick={logout}>Log Out</button>
         ) : (

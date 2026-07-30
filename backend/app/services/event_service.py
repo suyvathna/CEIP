@@ -3,6 +3,7 @@ from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from app.models.daily_diary import DailyDiary
 from app.models.evidence import Evidence
@@ -26,6 +27,18 @@ def create_event_service(db: Session, event: EventCreate) -> Event:
 def get_event_service(db: Session, event_id: UUID):
     return db.get(Event, event_id)
 
+def mark_notice_given_service(db: Session, event_id: UUID, notice_given_date: date):
+    event = db.get(Event, event_id)
+
+    if not event:
+        return None
+
+    event.notice_given_date = notice_given_date
+
+    db.commit()
+    db.refresh(event)
+
+    return event
 
 def update_event_service(db: Session, event_id: UUID, event: EventCreate):
     db_event = db.get(Event, event_id)
@@ -48,8 +61,15 @@ def delete_event_service(db: Session, event_id: UUID):
     if not db_event:
         return None
 
-    db.delete(db_event)
-    db.commit()
+    try:
+        db.delete(db_event)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise ValueError(
+            "This event still has diary entries or evidence recorded "
+            "under it. Delete those first, or keep the event as a record."
+        )
 
     return db_event
 

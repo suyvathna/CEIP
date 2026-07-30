@@ -1,11 +1,17 @@
 from datetime import date, datetime, time
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 
 from app.constants.event_types import EventType
 from app.constants.severity import Severity
 from app.constants.status import RecordStatus
+from app.services.notice_deadline_service import (
+    calculate_notice_deadline,
+    days_remaining,
+    get_notice_status,
+    get_today,
+)
 
 
 class EventCreate(BaseModel):
@@ -19,6 +25,10 @@ class EventCreate(BaseModel):
     severity: Severity = Severity.LOW
 
 
+class NoticeGivenRequest(BaseModel):
+    notice_given_date: date
+
+
 class EventResponse(BaseModel):
     id: UUID
     project_id: UUID
@@ -30,9 +40,29 @@ class EventResponse(BaseModel):
     location: str | None
     severity: Severity
     status: RecordStatus
+    notice_given_date: date | None
     created_at: datetime
     updated_at: datetime
 
     model_config = {
         "from_attributes": True
     }
+
+    @computed_field
+    @property
+    def notice_deadline(self) -> date:
+        return calculate_notice_deadline(self.event_date)
+
+    @computed_field
+    @property
+    def notice_status(self) -> str:
+        return get_notice_status(
+            self.event_date,
+            self.notice_given_date,
+            get_today(),
+        )
+
+    @computed_field
+    @property
+    def notice_days_remaining(self) -> int:
+        return days_remaining(self.event_date, get_today())

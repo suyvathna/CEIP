@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.schemas.event import EventCreate, EventResponse
+from app.schemas.event import EventCreate, EventResponse, NoticeGivenRequest
 from app.services.event_service import (
     create_event_service,
     delete_event_service,
@@ -17,6 +17,7 @@ from app.services.event_service import (
     get_project_activity_service,
     filter_events_service,
     get_timeline_analytics_service,
+    mark_notice_given_service,
 )
 from app.schemas.activity import ActivityResponse
 from app.schemas.timeline_analytics import TimelineDay
@@ -163,10 +164,16 @@ def delete_event(
     event_id: UUID,
     db: Session = Depends(get_db),
 ):
-    deleted = delete_event_service(
-        db,
-        event_id,
-    )
+    try:
+        deleted = delete_event_service(
+            db,
+            event_id,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=409,
+            detail=str(e),
+        )
 
     if deleted is None:
         raise HTTPException(
@@ -177,3 +184,19 @@ def delete_event(
     return {
         "message": "Event deleted successfully",
     }
+
+@router.patch("/{event_id}/notice", response_model=EventResponse)
+def mark_notice_given(
+    event_id: UUID,
+    payload: NoticeGivenRequest,
+    db: Session = Depends(get_db),
+):
+    event = mark_notice_given_service(db, event_id, payload.notice_given_date)
+
+    if event is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Event not found",
+        )
+
+    return event

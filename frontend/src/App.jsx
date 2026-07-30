@@ -10,6 +10,7 @@ import EventDetailPage from "./pages/EventDetailPage";
 import NewDiaryPage from "./pages/NewDiaryPage";
 import NewEvidencePage from "./pages/NewEvidencePage";
 import LoginPage from "./pages/LoginPage";
+import DeadlinesDashboardPage from "./pages/DeadlinesDashboardPage";
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
 
         <Route element={<ProtectedRoute />}>
+          <Route path="/deadlines" element={<DeadlinesDashboardPage />} />
           <Route path="/" element={<ProjectListPage />} />
           <Route path="/projects/new" element={<NewProjectPage />} />
           <Route path="/projects/:projectId" element={<ProjectDetailPage />} />

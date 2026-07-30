@@ -14,3 +14,14 @@ export function createEvent(data) {
     body: JSON.stringify(data),
   });
 }
+
+export function markNoticeGiven(eventId, noticeGivenDate) {
+  return apiRequest(`/events/${eventId}/notice`, {
+    method: "PATCH",
+    body: JSON.stringify({ notice_given_date: noticeGivenDate }),
+  });
+}
+
+export function getAllEvents() {
+  return apiRequest("/events/filter");
+}
