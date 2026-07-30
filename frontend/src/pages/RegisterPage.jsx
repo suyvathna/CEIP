@@ -1,22 +1,22 @@
 import { useState } from "react";
-import { useAuth } from "../context/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
+import { registerUser } from "../api/users";
 
-function LoginPage() {
+function RegisterPage() {
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
-  const { login } = useAuth();
 
   async function handleSubmit(e) {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
     try {
-      await login(email, password);
-      navigate("/");
+      await registerUser({ full_name: fullName, email, password });
+      navigate("/login");
     } catch (err) {
       setError(err.message);
       setSubmitting(false);
@@ -24,9 +24,17 @@ function LoginPage() {
   }
 
   return (
-    <div className="login-page">
-      <h1>Log In</h1>
+    <div className="register-page">
+      <h1>Create Account</h1>
       <form onSubmit={handleSubmit}>
+        <label>
+          Full name
+          <input
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            required
+          />
+        </label>
         <label>
           Email
           <input
@@ -49,14 +57,14 @@ function LoginPage() {
         {error && <p className="form-error">{error}</p>}
 
         <button type="submit" disabled={submitting}>
-          {submitting ? "Logging in..." : "Log In"}
+          {submitting ? "Creating account..." : "Create Account"}
         </button>
       </form>
       <p>
-        Need an account? <Link to="/register">Create one</Link>
+        Already have an account? <Link to="/login">Log in</Link>
       </p>
     </div>
   );
 }
 
-export default LoginPage;
+export default RegisterPage;

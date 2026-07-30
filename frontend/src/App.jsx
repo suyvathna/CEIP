@@ -12,13 +12,14 @@ import NewEvidencePage from "./pages/NewEvidencePage";
 import LoginPage from "./pages/LoginPage";
 import DeadlinesDashboardPage from "./pages/DeadlinesDashboardPage";
 import EditEventPage from "./pages/EditEventPage";
+import RegisterPage from "./pages/RegisterPage";
 
 function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
         <Route path="/login" element={<LoginPage />} />
-
+        <Route path="/register" element={<RegisterPage />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/deadlines" element={<DeadlinesDashboardPage />} />
           <Route path="/" element={<ProjectListPage />} />
