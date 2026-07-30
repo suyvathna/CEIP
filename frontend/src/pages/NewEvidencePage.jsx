@@ -31,7 +31,7 @@ function NewEvidencePage() {
   }
 
   return (
-    <div className="new-evidence-page">
+    <div className="new-evidence-page legacy-page">
       <Link to={`/projects/${projectId}`}>&larr; Back to project</Link>
       <h1>Upload Evidence</h1>
       <form onSubmit={handleSubmit}>

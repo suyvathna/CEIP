@@ -45,7 +45,7 @@ function NewDiaryPage() {
   }
 
   return (
-    <div className="new-diary-page">
+    <div className="new-diary-page legacy-page">
       <Link to={`/projects/${projectId}`}>&larr; Back to project</Link>
       <h1>New Diary Entry</h1>
       <form onSubmit={handleSubmit}>

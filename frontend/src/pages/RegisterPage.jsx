@@ -24,7 +24,7 @@ function RegisterPage() {
   }
 
   return (
-    <div className="register-page">
+    <div className="register-page legacy-page">
       <h1>Create Account</h1>
       <form onSubmit={handleSubmit}>
         <label>

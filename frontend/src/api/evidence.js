@@ -14,3 +14,13 @@ export function uploadEvidence(eventId, file) {
 export function getEventEvidence(eventId) {
   return apiRequest(`/evidence/search?event_id=${eventId}`);
 }
+
+export function getEvidence(evidenceId) {
+  return apiRequest(`/evidence/${evidenceId}`);
+}
+
+export function deleteEvidence(evidenceId) {
+  return apiRequest(`/evidence/${evidenceId}`, {
+    method: "DELETE",
+  });
+}

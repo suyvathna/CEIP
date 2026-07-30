@@ -39,7 +39,7 @@ function NewProjectPage() {
   }
 
   return (
-    <div className="new-project-page">
+    <div className="new-project-page legacy-page">
       <Link to="/">&larr; Back to projects</Link>
       <h1>New Project</h1>
       <form onSubmit={handleSubmit}>

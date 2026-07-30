@@ -43,7 +43,7 @@ function NewEventPage() {
   }
 
   return (
-    <div className="new-event-page">
+    <div className="new-event-page legacy-page">
       <Link to={`/projects/${projectId}`}>&larr; Back to project</Link>
       <h1>New Event</h1>
       <form onSubmit={handleSubmit}>

@@ -52,7 +52,7 @@ function EditEventPage() {
   if (!formData) return <p>Loading...</p>;
 
   return (
-    <div className="edit-event-page">
+    <div className="edit-event-page legacy-page">
       <Link to={`/projects/${projectId}/events/${eventId}`}>&larr; Back to event</Link>
       <h1>Edit Event</h1>
       <form onSubmit={handleSubmit}>

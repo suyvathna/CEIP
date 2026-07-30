@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { getEvent, markNoticeGiven, deleteEvent } from "../api/events";
 import { getEventDiaries } from "../api/dailyDiaries";
 import { getEventEvidence } from "../api/evidence";
+import { BASE_URL } from "../api/client";
 
 const NOTICE_STATUS_LABELS = {
   pending: "Notice period open",
@@ -82,7 +83,7 @@ function EventDetailPage() {
   if (!event) return <p>Event not found.</p>;
 
   return (
-    <div className="event-detail">
+    <div className="event-detail legacy-page">
       <Link to={`/projects/${projectId}`}>&larr; Back to project</Link>
       <div className="page-header">
         <h1>{event.title}</h1>
@@ -185,7 +186,7 @@ function EventDetailPage() {
         evidence.map((item) => (
           <div key={item.id} className="evidence-item">
             <a
-              href={`${import.meta.env.VITE_API_BASE_URL}/evidence/download/${item.id}`}
+              href={`${BASE_URL}/evidence/download/${item.id}`}
               target="_blank"
               rel="noreferrer"
             >

@@ -24,7 +24,7 @@ function LoginPage() {
   }
 
   return (
-    <div className="login-page">
+    <div className="login-page legacy-page">
       <h1>Log In</h1>
       <form onSubmit={handleSubmit}>
         <label>

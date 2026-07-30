@@ -38,7 +38,7 @@ function DeadlinesDashboardPage() {
   if (error) return <p>Something went wrong: {error}</p>;
 
   return (
-    <div className="deadlines-dashboard">
+    <div className="deadlines-dashboard legacy-page">
       <h1>Notice Deadlines</h1>
       {items.length === 0 ? (
         <p>Nothing needs notice action right now.</p>

@@ -1,4 +1,7 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+// Falls back to the FastAPI dev server default so the app works out of the
+// box even before a .env is set up (see .env.example).
+export const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 const TOKEN_KEY = "ceip_token";
 
 export function setToken(token) {

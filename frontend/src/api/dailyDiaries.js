@@ -14,3 +14,20 @@ export function getDailyDiary(diaryId) {
 export function getEventDiaries(eventId) {
   return apiRequest(`/daily-diaries/event/${eventId}`);
 }
+
+export function updateDailyDiary(diaryId, data) {
+  return apiRequest(`/daily-diaries/${diaryId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteDailyDiary(diaryId) {
+  return apiRequest(`/daily-diaries/${diaryId}`, {
+    method: "DELETE",
+  });
+}
+
+export function getDailyReport(diaryId) {
+  return apiRequest(`/daily-diaries/${diaryId}/report`);
+}

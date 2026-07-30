@@ -38,3 +38,25 @@ export function deleteEvent(eventId) {
     method: "DELETE",
   });
 }
+
+export function filterEvents({ projectId, eventType, severity, status } = {}) {
+  const params = new URLSearchParams();
+
+  if (projectId) params.set("project_id", projectId);
+  if (eventType) params.set("event_type", eventType);
+  if (severity) params.set("severity", severity);
+  if (status) params.set("status", status);
+
+  const query = params.toString();
+  return apiRequest(`/events/filter${query ? `?${query}` : ""}`);
+}
+
+export function searchEvents(keyword) {
+  return apiRequest(`/events/search?keyword=${encodeURIComponent(keyword)}`);
+}
+
+export function searchEventsByDate(startDate, endDate) {
+  return apiRequest(
+    `/events/search-by-date?start_date=${startDate}&end_date=${endDate}`
+  );
+}

@@ -49,7 +49,7 @@ function EditProjectPage() {
   if (!formData) return <p>Loading...</p>;
 
   return (
-    <div className="edit-project-page">
+    <div className="edit-project-page legacy-page">
       <Link to={`/projects/${projectId}`}>&larr; Back to project</Link>
       <h1>Edit Project</h1>
       <form onSubmit={handleSubmit}>
