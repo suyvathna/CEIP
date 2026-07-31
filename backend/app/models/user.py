@@ -33,9 +33,16 @@ class User(Base):
         nullable=False,
     )
 
+    # CEIP has no Engineer login role - this platform is Contractor-side
+    # only, and the Engineer never has a User row at all (see the note on
+    # ClaimAccessToken for how the Engineer sees a claim instead: a
+    # read-only PDF, never platform access). "Contractor" is the only
+    # role in use for now; per-company permission tiers (Admin vs. site
+    # staff, say) are a later concern, not something this column tries to
+    # model yet.
     role: Mapped[str] = mapped_column(
         String(20),
-        default="Engineer",
+        default="Contractor",
     )
 
     is_active: Mapped[bool] = mapped_column(

@@ -10,13 +10,14 @@ from app.db.base import Base
 
 class ClaimAccessToken(Base):
     """
-    A low-friction path for the Engineer to participate in a claim
-    without needing a CEIP user account - a real adoption-risk mitigation,
-    since the Engineer will rarely be willing to register on a platform
-    the Contractor's side deployed. The token grants read access to one
-    claim (facts, evidence, delay analysis) plus the ability to respond
-    to facts and submit an overall Engineer response, scoped to that
-    claim only, until expires_at.
+    A no-account way for the Contractor to hand a claim to the Engineer
+    (or anyone else outside the platform) without them ever touching
+    CEIP itself - the token resolves directly to a read-only PDF of the
+    claim (see api/claim_access.py's public_router and
+    claim_service.get_claim_report_data), not to any page or JSON API of
+    this app. There is nothing to log into and nothing to respond
+    through: CEIP is Contractor-only, and this is the entire surface the
+    Engineer ever sees. Scoped to one claim, until expires_at.
     """
 
     __tablename__ = "claim_access_tokens"

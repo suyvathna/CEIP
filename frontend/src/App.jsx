@@ -23,7 +23,6 @@ import ClaimListPage from "./pages/ClaimListPage";
 import NewClaimPage from "./pages/NewClaimPage";
 import ClaimDetailPage from "./pages/ClaimDetailPage";
 import ProgrammePage from "./pages/ProgrammePage";
-import EngineerClaimReviewPage from "./pages/EngineerClaimReviewPage";
 
 function App() {
   return (
@@ -31,9 +30,10 @@ function App() {
       <Route element={<Layout />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        {/* Public, no-account Engineer entry point via a magic link -
-            deliberately outside ProtectedRoute, same as /login. */}
-        <Route path="/review/:token" element={<EngineerClaimReviewPage />} />
+        {/* No /review route here on purpose - CEIP is Contractor-only.
+            The Engineer's entire path into a claim is a share link that
+            resolves straight to a PDF from the API itself (see
+            api/claimAccess.js), never a page of this app. */}
         <Route element={<ProtectedRoute />}>
           <Route path="/deadlines" element={<DeadlinesDashboardPage />} />
           <Route path="/search" element={<SearchResultsPage />} />

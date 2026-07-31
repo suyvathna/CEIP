@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -24,6 +25,7 @@ from app.services.claim_service import (
     engineer_respond,
     get_claim,
     get_claim_events,
+    get_claim_report_data,
     get_claim_responses,
     get_project_claims,
     link_event,
@@ -33,6 +35,7 @@ from app.services.claim_service import (
     unlink_event,
 )
 from app.services.event_service import attach_notice_periods
+from app.services.pdf_service import generate_claim_report_pdf
 
 router = APIRouter(prefix="/claims", tags=["Claims"])
 
@@ -164,3 +167,26 @@ def engineer_response_endpoint(
 @router.get("/{claim_id}/responses", response_model=list[ClaimResponseOut])
 def read_claim_responses(claim_id: UUID, db: Session = Depends(get_db)):
     return get_claim_responses(db, claim_id)
+
+
+@router.get("/{claim_id}/report/pdf")
+def claim_report_pdf_endpoint(claim_id: UUID, db: Session = Depends(get_db)):
+    """
+    The Contractor's own direct download of this claim as a PDF - the
+    same document a share link (see api/claim_access.py) would hand the
+    Engineer, generated here without needing to create a link first, for
+    printing or attaching to an email/Telegram message by hand.
+    """
+    data = get_claim_report_data(db, claim_id)
+    if data is None:
+        raise HTTPException(status_code=404, detail="Claim not found")
+
+    pdf = generate_claim_report_pdf(data)
+
+    return StreamingResponse(
+        pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="claim_report_{claim_id}.pdf"'
+        },
+    )

@@ -18,6 +18,7 @@ import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import DownloadIcon from "@mui/icons-material/Download";
 import {
   getClaim,
   getClaimClock,
@@ -27,6 +28,7 @@ import {
   submitDetailedClaim,
   submitEngineerResponse,
   createClaimAccessLink,
+  downloadClaimReportPdf,
 } from "../api/claims";
 import {
   getClaimFacts,
@@ -35,6 +37,7 @@ import {
   respondToFact,
 } from "../api/claimFacts";
 import { getClaimDelayAnalysis } from "../api/programme";
+import { getPublicClaimReportPdfUrl } from "../api/claimAccess";
 
 const STAGE_STATUS_COLOR = {
   met: "success",
@@ -597,41 +600,69 @@ function DelayAnalysisPanel({ claimId, projectId }) {
   );
 }
 
-function AccessLinkPanel({ claimId }) {
+function ShareReportPanel({ claimId }) {
   const { enqueueSnackbar } = useSnackbar();
   const [email, setEmail] = useState("");
   const [link, setLink] = useState(null);
+  const [downloading, setDownloading] = useState(false);
 
-  const mutation = useMutation({
+  const linkMutation = useMutation({
     mutationFn: () => createClaimAccessLink(claimId, email),
     onSuccess: (token) => {
-      const url = `${window.location.origin}/review/${token.token}`;
-      setLink(url);
+      setLink(getPublicClaimReportPdfUrl(token.token));
     },
     onError: (err) => enqueueSnackbar(err.message, { variant: "error" }),
   });
 
+  async function handleDownload() {
+    setDownloading(true);
+    try {
+      await downloadClaimReportPdf(claimId);
+    } catch (err) {
+      enqueueSnackbar(err.message, { variant: "error" });
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <Paper sx={{ p: 3 }}>
       <Typography variant="h6" gutterBottom>
-        Engineer Access Link
+        Share with the Engineer
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Generates a link the Engineer can open without creating an
-        account, to review this claim's facts and evidence and respond.
-        Send it to them directly - there's no automatic email dispatch.
+        CEIP is Contractor-only - the Engineer never logs in or gets an
+        account. Download a read-only PDF of this claim to send yourself,
+        or generate a link that opens straight to that same PDF. Either
+        way, the only thing they can ever reach is the document itself.
+      </Typography>
+
+      <Button
+        variant="contained"
+        size="small"
+        startIcon={<DownloadIcon fontSize="small" />}
+        disabled={downloading}
+        onClick={handleDownload}
+      >
+        {downloading ? "Preparing PDF..." : "Download claim report (PDF)"}
+      </Button>
+
+      <Divider sx={{ my: 2 }} />
+
+      <Typography variant="subtitle2" gutterBottom>
+        Or generate a share link
       </Typography>
       <Stack direction="row" spacing={1}>
         <TextField
           size="small"
-          label="Engineer's email"
+          label="Engineer's email (for your own record)"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
         <Button
           variant="outlined"
-          disabled={!email || mutation.isPending}
-          onClick={() => mutation.mutate()}
+          disabled={!email || linkMutation.isPending}
+          onClick={() => linkMutation.mutate()}
         >
           Generate link
         </Button>
@@ -736,7 +767,7 @@ function ClaimDetailPage() {
       <WorkflowActions claim={claim} claimId={claimId} onChanged={refreshAll} />
       <FactsRegister claimId={claimId} onChanged={refreshAll} />
       <DelayAnalysisPanel claimId={claimId} projectId={projectId} />
-      <AccessLinkPanel claimId={claimId} />
+      <ShareReportPanel claimId={claimId} />
     </Stack>
   );
 }

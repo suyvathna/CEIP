@@ -16,7 +16,9 @@ from app.schemas.claim import (
     EngineerLateNoticeFlagRequest,
     NoticeSubmitRequest,
 )
-from app.services.claim_clock_service import config_from_project, get_today
+from app.services.claim_clock_service import config_from_project, get_claim_clock, get_today
+from app.services.claim_fact_service import get_claim_facts, get_fact_summary
+from app.services.event_service import attach_notice_periods
 
 
 def _get_project(db: Session, project_id: UUID) -> Project | None:
@@ -109,6 +111,60 @@ def get_claim_responses(db: Session, claim_id: UUID):
         .order_by(ClaimResponse.response_date, ClaimResponse.created_at)
     )
     return db.scalars(stmt).all()
+
+
+def get_claim_report_data(db: Session, claim_id: UUID) -> dict | None:
+    """
+    Assembles everything the claim report PDF needs to stand alone as a
+    document: the claim itself, its owning project's name, the computed
+    Sub-Clause 20.2 deadline clock, the linked events, the fact-agreement
+    register and its summary, and the full response history.
+
+    Used by both the Contractor's own authenticated download
+    (GET /claims/{claim_id}/report/pdf) and the no-account public share
+    link (GET /public/claims/{token}/pdf) - deliberately the same
+    document either way, since a report that said something different
+    depending on who asked for it wouldn't be worth handing to anyone.
+    """
+    claim = get_claim(db, claim_id)
+    if claim is None:
+        return None
+
+    project = _get_project(db, claim.project_id)
+    config = config_from_project(project)
+
+    responses = get_claim_responses(db, claim.id)
+    decision_responses = [
+        r
+        for r in responses
+        if r.response_type
+        in ("Agreement", "PartialAgreement", "Disagreement", "Determination")
+    ]
+    engineer_responded_date = (
+        decision_responses[-1].response_date if decision_responses else None
+    )
+
+    clock = get_claim_clock(
+        awareness_date=claim.awareness_date,
+        notice_submitted_date=claim.notice_submitted_date,
+        detailed_claim_submitted_date=claim.detailed_claim_submitted_date,
+        engineer_responded_date=engineer_responded_date,
+        config=config,
+    )
+
+    events = attach_notice_periods(db, get_claim_events(db, claim.id))
+    facts = get_claim_facts(db, claim.id)
+    fact_summary = get_fact_summary(db, claim.id)
+
+    return {
+        "claim": claim,
+        "project_name": project.project_name if project else None,
+        "clock": clock,
+        "events": events,
+        "facts": facts,
+        "fact_summary": fact_summary,
+        "responses": responses,
+    }
 
 
 def _latest_response_of_type(
