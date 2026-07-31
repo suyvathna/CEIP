@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, Text, func
+from sqlalchemy import Date, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -38,7 +38,12 @@ class DailyDiary(Base):
 
     work_completed: Mapped[str | None] = mapped_column(Text)
 
-    manpower: Mapped[int | None] = mapped_column(Integer)
+    # Free text on purpose - a real site diary entry is rarely just a
+    # headcount ("28"), it's a breakdown by trade ("12 carpenters, 8
+    # masons, 4 electricians, 2 helpers") that a number field can't
+    # capture and that matters when a manpower shortfall becomes part of
+    # a delay claim's supporting narrative.
+    manpower: Mapped[str | None] = mapped_column(String(500))
 
     equipment: Mapped[str | None] = mapped_column(Text)
 

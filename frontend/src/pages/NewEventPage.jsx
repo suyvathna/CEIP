@@ -1,18 +1,26 @@
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { createEvent } from "../api/events";
+import { todayLocalISODate, nowLocalTime } from "../utils/date";
 
+// Must match app.constants.event_types.EventType on the backend exactly -
+// the API validates event_type as a strict enum, so a mismatch here
+// would fail on submit.
 const EVENT_TYPES = [
-  "Progress", "Delay", "Weather", "Quality", "Safety",
-  "RFI", "Instruction", "Inspection", "Delivery", "Incident", "Other",
+  "Progress", "Delay", "Weather", "Adverse Weather", "Quality", "Safety",
+  "RFI", "Instruction", "Inspection", "Delivery",
+  "Design Change / Variation Order", "Access Restriction", "Incident", "Other",
 ];
 const SEVERITIES = ["Low", "Medium", "High"];
 
 const initialFormState = {
   title: "",
   description: "",
-  event_date: "",
-  event_time: "",
+  // Defaults to today/now - most events are logged the same day they
+  // happen, so this saves a tap on every single entry rather than
+  // leaving the field blank and forcing a picker interaction each time.
+  event_date: todayLocalISODate(),
+  event_time: nowLocalTime(),
   event_type: "Progress",
   location: "",
   severity: "Low",

@@ -23,7 +23,7 @@ function NewEvidencePage() {
     setError(null);
     try {
       await uploadEvidence(eventId, file);
-      navigate(`/projects/${projectId}`);
+      navigate(`/projects/${projectId}/events/${eventId}`);
     } catch (err) {
       setError(err.message);
       setSubmitting(false);
@@ -32,8 +32,8 @@ function NewEvidencePage() {
 
   return (
     <div className="new-evidence-page legacy-page">
-      <Link to={`/projects/${projectId}`}>&larr; Back to project</Link>
-      <h1>Upload Evidence</h1>
+      <Link to={`/projects/${projectId}/events/${eventId}`}>&larr; Back to event</Link>
+      <h1>Add Attachment</h1>
       <form onSubmit={handleSubmit}>
         <label>
           File

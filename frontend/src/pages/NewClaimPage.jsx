@@ -29,6 +29,8 @@ function NewClaimPage() {
   });
 
   const [form, setForm] = useState({
+    claim_no: "",
+    governing_clause: "",
     claim_type: "EOT",
     claiming_party: "Contractor",
     title: "",
@@ -42,6 +44,8 @@ function NewClaimPage() {
     mutationFn: () =>
       createClaim({
         project_id: projectId,
+        claim_no: form.claim_no || null,
+        governing_clause: form.governing_clause || null,
         claim_type: form.claim_type,
         claiming_party: form.claiming_party,
         title: form.title,
@@ -84,6 +88,20 @@ function NewClaimPage() {
 
       <Paper sx={{ p: 3 }} component="form" onSubmit={handleSubmit}>
         <Stack spacing={2}>
+          <TextField
+            label="Claim No."
+            value={form.claim_no}
+            onChange={(e) => setForm({ ...form, claim_no: e.target.value })}
+            helperText="Leave blank to auto-number (CLM-001, CLM-002, ...) or enter your own reference"
+          />
+
+          <TextField
+            label="Governing clause"
+            value={form.governing_clause}
+            onChange={(e) => setForm({ ...form, governing_clause: e.target.value })}
+            helperText="The substantive entitlement clause this claim is based on, e.g. Sub-Clause 8.5(c) - Adverse Climatic Conditions, or Sub-Clause 13.1 - Variation. Separate from the Sub-Clause 20.2 claims procedure this page already tracks."
+          />
+
           <TextField
             select
             label="Claim type"

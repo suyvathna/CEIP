@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { createDailyDiary } from "../api/dailyDiaries";
+import { todayLocalISODate } from "../utils/date";
 
 const initialFormState = {
-  diary_date: "",
+  diary_date: todayLocalISODate(),
   work_completed: "",
   manpower: "",
   equipment: "",
@@ -36,7 +37,7 @@ function NewDiaryPage() {
         ...formData,
         project_id: projectId,
         event_id: eventId || null,
-        manpower: formData.manpower === "" ? null : Number(formData.manpower),
+        manpower: formData.manpower === "" ? null : formData.manpower,
       });
       navigate(`/projects/${projectId}`);
     } catch (err) {
@@ -49,6 +50,10 @@ function NewDiaryPage() {
     <div className="new-diary-page legacy-page">
       <Link to={`/projects/${projectId}`}>&larr; Back to project</Link>
       <h1>New Diary Entry</h1>
+      <p className="form-hint">
+        Any event logged for this project on the same date links to this
+        diary entry automatically - no need to attach it by hand.
+      </p>
       <form onSubmit={handleSubmit}>
         <label>
           Diary date
@@ -59,8 +64,14 @@ function NewDiaryPage() {
           <textarea name="work_completed" value={formData.work_completed} onChange={handleChange} />
         </label>
         <label>
-          Manpower (number of workers)
-          <input type="number" name="manpower" value={formData.manpower} onChange={handleChange} min="0" />
+          Manpower
+          <input
+            type="text"
+            name="manpower"
+            value={formData.manpower}
+            onChange={handleChange}
+            placeholder="e.g. 12 carpenters, 8 masons, 4 electricians"
+          />
         </label>
         <label>
           Equipment

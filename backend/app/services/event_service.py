@@ -5,12 +5,44 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from app.models.daily_diary import DailyDiary
+from app.models.daily_diary import DailyDiary, DiaryEventLink
 from app.models.evidence import Evidence
 from app.models.event import Event
 from app.models.project import Project
 from app.schemas.event import EventCreate
 from app.services.notice_deadline_service import NOTICE_PERIOD_DAYS
+
+
+def _auto_link_same_day_diaries(db: Session, db_event: Event) -> None:
+    """
+    Mirror of daily_diary_service._auto_link_same_day_events: an Event and
+    any Daily Diary already logged for the same project on the same date
+    are linked automatically, in whichever order they happen to be
+    created. This removes the need for the old "add a diary entry from
+    inside this event" flow - the two records find each other by date on
+    their own.
+    """
+    same_day_diaries = list(
+        db.scalars(
+            select(DailyDiary).where(
+                DailyDiary.project_id == db_event.project_id,
+                DailyDiary.diary_date == db_event.event_date,
+            )
+        ).all()
+    )
+
+    for diary in same_day_diaries:
+        if diary.event_id == db_event.id:
+            continue
+
+        existing_link = db.scalar(
+            select(DiaryEventLink).where(
+                DiaryEventLink.diary_id == diary.id,
+                DiaryEventLink.event_id == db_event.id,
+            )
+        )
+        if existing_link is None:
+            db.add(DiaryEventLink(diary_id=diary.id, event_id=db_event.id))
 
 
 def attach_notice_periods(db: Session, events):
@@ -49,6 +81,10 @@ def create_event_service(db: Session, event: EventCreate) -> Event:
     db_event = Event(**event.model_dump())
 
     db.add(db_event)
+    db.flush()
+
+    _auto_link_same_day_diaries(db, db_event)
+
     db.commit()
     db.refresh(db_event)
 

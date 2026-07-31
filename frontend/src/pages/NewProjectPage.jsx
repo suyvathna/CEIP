@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { createProject } from "../api/projects";
 
+const CURRENCIES = ["USD", "KHR", "THB", "EUR"];
+
 const initialFormState = {
   project_code: "",
   project_name: "",
@@ -9,10 +11,14 @@ const initialFormState = {
   contractor_name: "",
   engineer_name: "",
   contract_type: "",
-  country: "",
+  contract_no: "",
+  site_address: "",
+  country: "Cambodia",
   city: "",
   planned_start: "",
-  planned_finish: "",
+  duration_days: "",
+  currency: "USD",
+  contract_value: "",
   // FIDIC 2017 Sub-Clause 20.2 default periods (days). These are
   // contract defaults, not fixed law - Particular Conditions (and the
   // MDB Harmonised Edition common on ADB/World Bank-funded work in
@@ -23,6 +29,19 @@ const initialFormState = {
   engineer_late_notice_flag_days: 14,
   engineer_response_period_days: 42,
 };
+
+// Local preview only - the authoritative completion date is always
+// computed server-side from planned_start + duration_days (see
+// project_service.py), this just shows the PM what to expect before
+// they submit.
+function previewCompletionDate(startDate, durationDays) {
+  if (!startDate || !durationDays) return null;
+  const start = new Date(`${startDate}T00:00:00`);
+  if (Number.isNaN(start.getTime())) return null;
+  const finish = new Date(start);
+  finish.setDate(finish.getDate() + Number(durationDays));
+  return finish.toISOString().slice(0, 10);
+}
 
 function NewProjectPage() {
   const [formData, setFormData] = useState(initialFormState);
@@ -41,6 +60,8 @@ function NewProjectPage() {
     try {
       const newProject = await createProject({
         ...formData,
+        duration_days: Number(formData.duration_days) || 0,
+        contract_value: formData.contract_value === "" ? null : Number(formData.contract_value),
         notice_period_days: Number(formData.notice_period_days),
         detailed_claim_period_days: Number(formData.detailed_claim_period_days),
         engineer_late_notice_flag_days: Number(formData.engineer_late_notice_flag_days),
@@ -52,6 +73,11 @@ function NewProjectPage() {
       setSubmitting(false);
     }
   }
+
+  const completionPreview = previewCompletionDate(
+    formData.planned_start,
+    formData.duration_days
+  );
 
   return (
     <div className="new-project-page legacy-page">
@@ -65,6 +91,15 @@ function NewProjectPage() {
         <label>
           Project name
           <input name="project_name" value={formData.project_name} onChange={handleChange} required />
+        </label>
+        <label>
+          Contract No.
+          <input
+            name="contract_no"
+            value={formData.contract_no}
+            onChange={handleChange}
+            placeholder="e.g. CT-2026-045"
+          />
         </label>
         <label>
           Client name
@@ -83,6 +118,15 @@ function NewProjectPage() {
           <input name="contract_type" value={formData.contract_type} onChange={handleChange} required />
         </label>
         <label>
+          Site address
+          <input
+            name="site_address"
+            value={formData.site_address}
+            onChange={handleChange}
+            placeholder="Street, Sangkat/Commune, Khan/District, Province"
+          />
+        </label>
+        <label>
           Country
           <input name="country" value={formData.country} onChange={handleChange} required />
         </label>
@@ -91,12 +135,42 @@ function NewProjectPage() {
           <input name="city" value={formData.city} onChange={handleChange} required />
         </label>
         <label>
-          Planned start
+          Commencement date
           <input type="date" name="planned_start" value={formData.planned_start} onChange={handleChange} required />
         </label>
         <label>
-          Planned finish
-          <input type="date" name="planned_finish" value={formData.planned_finish} onChange={handleChange} required />
+          Time for Completion (days)
+          <input
+            type="number"
+            min="1"
+            name="duration_days"
+            value={formData.duration_days}
+            onChange={handleChange}
+            required
+          />
+        </label>
+        <p className="form-hint">
+          Completion date{completionPreview ? `: ${completionPreview}` : " will be calculated automatically from the commencement date + duration."}
+        </p>
+        <label>
+          Currency
+          <select name="currency" value={formData.currency} onChange={handleChange}>
+            {CURRENCIES.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Contract value
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            name="contract_value"
+            value={formData.contract_value}
+            onChange={handleChange}
+            placeholder="e.g. 2500000"
+          />
         </label>
 
         <fieldset>

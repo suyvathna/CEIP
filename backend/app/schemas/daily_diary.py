@@ -8,7 +8,7 @@ class DailyDiaryCreate(BaseModel):
     project_id: UUID
     event_id: UUID | None = None
     work_completed: str | None = None
-    manpower: int | None = None
+    manpower: str | None = None
     equipment: str | None = None
     materials: str | None = None
     delays: str | None = None
@@ -26,7 +26,7 @@ class DailyDiaryResponse(BaseModel):
     project_id: UUID
     event_id: UUID | None
     work_completed: str | None
-    manpower: int | None
+    manpower: str | None
     equipment: str | None
     materials: str | None
     delays: str | None

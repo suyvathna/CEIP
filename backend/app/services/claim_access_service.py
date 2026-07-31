@@ -13,7 +13,7 @@ DEFAULT_TOKEN_TTL_DAYS = 60
 def create_access_token(
     db: Session,
     claim_id: UUID,
-    recipient_email: str,
+    recipient_email: str | None,
     ttl_days: int = DEFAULT_TOKEN_TTL_DAYS,
 ) -> ClaimAccessToken:
     token = ClaimAccessToken(

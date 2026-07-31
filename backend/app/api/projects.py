@@ -2,13 +2,14 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.schemas.project import ProjectCreate, ProjectResponse
+from app.schemas.project import ProjectCreate, ProjectResponse, ProjectStatusUpdate
 from app.services.project_service import (
     create_project,
     delete_project,
     get_project,
     get_projects,
     update_project,
+    update_project_status,
 )
 from app.models.user import User
 
@@ -59,6 +60,33 @@ def update_existing_project(
     db: Session = Depends(get_db),
 ):
     updated = update_project(db, project_id, project)
+
+    if updated is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Project not found",
+        )
+
+    return updated
+
+
+@router.patch("/{project_id}/status", response_model=ProjectResponse)
+def update_project_status_endpoint(
+    project_id: UUID,
+    payload: ProjectStatusUpdate,
+    db: Session = Depends(get_db),
+):
+    """
+    Manually mark a project Completed or On Hold, or resume one ("In
+    Progress") that was previously On Hold. "Planning"/"In Progress" are
+    otherwise derived automatically from the Commencement Date - this
+    endpoint exists for the two states that are a business decision, not
+    something a calendar date should decide alone.
+    """
+    try:
+        updated = update_project_status(db, project_id, payload)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     if updated is None:
         raise HTTPException(

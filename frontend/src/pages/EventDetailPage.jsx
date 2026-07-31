@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { getEvent, markNoticeGiven, deleteEvent } from "../api/events";
 import { getEventDiaries } from "../api/dailyDiaries";
-import { getEventEvidence } from "../api/evidence";
+import { getEventEvidence, deleteEvidence } from "../api/evidence";
 import { BASE_URL } from "../api/client";
+import { todayLocalISODate } from "../utils/date";
 
 const NOTICE_STATUS_LABELS = {
   pending: "Notice period open",
@@ -11,17 +12,6 @@ const NOTICE_STATUS_LABELS = {
   given_on_time: "Notice given on time",
   given_late: "Notice given late",
 };
-
-// Local calendar date, not UTC - new Date().toISOString() shifts by the
-// browser's UTC offset and would show yesterday's date for part of the day
-// in Cambodia (UTC+7). This matches the same care taken on the backend.
-function todayLocalISODate() {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
 
 function EventDetailPage() {
   const { projectId, eventId } = useParams();
@@ -32,12 +22,13 @@ function EventDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
+  const [attachmentError, setAttachmentError] = useState(null);
   const [noticeDate, setNoticeDate] = useState(todayLocalISODate());
   const [submittingNotice, setSubmittingNotice] = useState(false);
 
-  useEffect(() => {
+  function reload() {
     setLoading(true);
-    Promise.all([
+    return Promise.all([
       getEvent(eventId),
       getEventDiaries(eventId),
       getEventEvidence(eventId),
@@ -49,6 +40,11 @@ function EventDetailPage() {
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId]);
 
   async function handleDelete() {
@@ -62,6 +58,21 @@ function EventDetailPage() {
       navigate(`/projects/${projectId}`);
     } catch (err) {
       setDeleteError(err.message);
+    }
+  }
+
+  async function handleDeleteAttachment(item) {
+    const confirmed = window.confirm(
+      `Remove "${item.filename || "this attachment"}"? This cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    setAttachmentError(null);
+    try {
+      await deleteEvidence(item.id);
+      setEvidence((prev) => prev.filter((e) => e.id !== item.id));
+    } catch (err) {
+      setAttachmentError(err.message);
     }
   }
 
@@ -150,15 +161,20 @@ function EventDetailPage() {
         )}
       </div>
 
-      {/* Diary Entries Section */}
+      {/* Diary Entries Section - read-only here. A diary is no longer
+          created "from inside" an event: any Daily Diary entry logged for
+          this project on the same date links to this event automatically
+          (and vice versa). Add/edit diary entries from the project's
+          Daily Diary tab instead. */}
       <div className="section-header">
-        <h2>Diary Entries</h2>
-        <Link to={`/projects/${projectId}/events/${eventId}/diary/new`}>
-          + Add Diary
-        </Link>
+        <h2>Linked Daily Diary</h2>
+        <Link to={`/projects/${projectId}`}>Go to Daily Diary tab</Link>
       </div>
       {diaries.length === 0 ? (
-        <p>No diary entries yet.</p>
+        <p>
+          No diary entry for {event.event_date} yet. Log one from the
+          project's Daily Diary tab and it will link here automatically.
+        </p>
       ) : (
         diaries.map((diary) => (
           <div key={diary.id} className="diary-entry">
@@ -166,22 +182,21 @@ function EventDetailPage() {
               <strong>{diary.diary_date}</strong>
             </p>
             {diary.work_completed && <p>Work: {diary.work_completed}</p>}
-            {diary.manpower !== null && diary.manpower !== undefined && (
-              <p>Manpower: {diary.manpower}</p>
-            )}
+            {diary.manpower && <p>Manpower: {diary.manpower}</p>}
           </div>
         ))
       )}
 
-      {/* Evidence Section */}
+      {/* Attachments Section (formerly "Evidence") */}
       <div className="section-header">
-        <h2>Evidence</h2>
+        <h2>Attachments</h2>
         <Link to={`/projects/${projectId}/events/${eventId}/evidence/new`}>
-          + Add Evidence
+          + Add Attachment
         </Link>
       </div>
+      {attachmentError && <p className="form-error">{attachmentError}</p>}
       {evidence.length === 0 ? (
-        <p>No evidence uploaded yet.</p>
+        <p>No attachments yet.</p>
       ) : (
         evidence.map((item) => (
           <div key={item.id} className="evidence-item">
@@ -192,6 +207,20 @@ function EventDetailPage() {
             >
               {item.filename || `File ${item.id}`}
             </a>
+            {item.is_locked ? (
+              <span className="status-badge" title="Attached to a submitted claim - can't be removed">
+                {" "}
+                Locked
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="danger-button"
+                onClick={() => handleDeleteAttachment(item)}
+              >
+                Remove
+              </button>
+            )}
           </div>
         ))
       )}

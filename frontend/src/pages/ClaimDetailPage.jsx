@@ -607,9 +607,14 @@ function ShareReportPanel({ claimId }) {
   const [downloading, setDownloading] = useState(false);
 
   const linkMutation = useMutation({
-    mutationFn: () => createClaimAccessLink(claimId, email),
+    // recipient_email is optional server-side (see
+    // ClaimAccessTokenCreate) - it's only kept for the Contractor's own
+    // record, so an empty field should never block the link itself from
+    // being generated.
+    mutationFn: () => createClaimAccessLink(claimId, email || null),
     onSuccess: (token) => {
       setLink(getPublicClaimReportPdfUrl(token.token));
+      enqueueSnackbar("Share link generated", { variant: "success" });
     },
     onError: (err) => enqueueSnackbar(err.message, { variant: "error" }),
   });
@@ -655,16 +660,16 @@ function ShareReportPanel({ claimId }) {
       <Stack direction="row" spacing={1}>
         <TextField
           size="small"
-          label="Engineer's email (for your own record)"
+          label="Engineer's email (optional, for your own record)"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
         <Button
           variant="outlined"
-          disabled={!email || linkMutation.isPending}
+          disabled={linkMutation.isPending}
           onClick={() => linkMutation.mutate()}
         >
-          Generate link
+          {linkMutation.isPending ? "Generating..." : "Generate link"}
         </Button>
       </Stack>
       {link && (
@@ -728,12 +733,21 @@ function ClaimDetailPage() {
       </Button>
 
       <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
+        {claim.claim_no && (
+          <Chip color="primary" variant="outlined" label={claim.claim_no} />
+        )}
         <Typography variant="h4" fontWeight={700}>
           {claim.title}
         </Typography>
         <Chip label={claim.status} />
         <Chip variant="outlined" label={claim.claim_type} />
       </Stack>
+
+      {claim.governing_clause && (
+        <Typography variant="body2" color="text.secondary">
+          Governing clause: {claim.governing_clause}
+        </Typography>
+      )}
 
       {claim.description && (
         <Typography variant="body1" color="text.secondary">

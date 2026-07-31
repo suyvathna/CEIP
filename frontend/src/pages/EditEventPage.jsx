@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { getEvent, updateEvent } from "../api/events";
 
+// Must match NewEventPage.jsx / the backend EventType enum.
 const EVENT_TYPES = [
-  "Progress", "Delay", "Weather", "Quality", "Safety",
-  "RFI", "Instruction", "Inspection", "Delivery", "Incident", "Other",
+  "Progress", "Delay", "Weather", "Adverse Weather", "Quality", "Safety",
+  "RFI", "Instruction", "Inspection", "Delivery",
+  "Design Change / Variation Order", "Access Restriction", "Incident", "Other",
 ];
 const SEVERITIES = ["Low", "Medium", "High"];
 

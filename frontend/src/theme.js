@@ -87,9 +87,11 @@ export const statusColor = (status) => {
 export const projectStatusColor = (status) => {
   switch (status) {
     case "Planning":
-      return "warning";
-    case "Ongoing":
+      return "default";
+    case "In Progress":
       return "info";
+    case "On Hold":
+      return "warning";
     case "Completed":
       return "success";
     default:

@@ -1,7 +1,7 @@
 from datetime import date
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.constants.claim_status import ClaimResponseType, ClaimStatus
@@ -25,9 +25,23 @@ def _get_project(db: Session, project_id: UUID) -> Project | None:
     return db.get(Project, project_id)
 
 
+def _next_claim_no(db: Session, project_id: UUID) -> str:
+    """
+    "CLM-001", "CLM-002", ... scoped per project. Only used when the
+    Contractor leaves Claim No. blank - if they type their own reference
+    (matching their own correspondence/RFI numbering) that's kept as-is.
+    """
+    count = db.scalar(
+        select(func.count()).select_from(Claim).where(Claim.project_id == project_id)
+    )
+    return f"CLM-{(count or 0) + 1:03d}"
+
+
 def create_claim(db: Session, payload: ClaimCreate) -> Claim:
     claim = Claim(
         project_id=payload.project_id,
+        claim_no=payload.claim_no or _next_claim_no(db, payload.project_id),
+        governing_clause=payload.governing_clause,
         claim_type=payload.claim_type,
         claiming_party=payload.claiming_party,
         title=payload.title,

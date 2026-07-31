@@ -8,6 +8,8 @@ from app.constants.claim_status import ClaimingParty, ClaimResponseType, ClaimTy
 
 class ClaimCreate(BaseModel):
     project_id: UUID
+    claim_no: str | None = None
+    governing_clause: str | None = None
     claim_type: ClaimType
     claiming_party: ClaimingParty = ClaimingParty.CONTRACTOR
     title: str
@@ -20,6 +22,8 @@ class ClaimCreate(BaseModel):
 class ClaimOut(BaseModel):
     id: UUID
     project_id: UUID
+    claim_no: str | None
+    governing_clause: str | None
     claim_type: ClaimType
     claiming_party: ClaimingParty
     title: str

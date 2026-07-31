@@ -183,6 +183,8 @@ def generate_claim_report_pdf(data: dict):
         _styled_table(
             [
                 ["Field", "Value"],
+                ["Claim No.", claim.claim_no or "—"],
+                ["Governing clause", claim.governing_clause or "—"],
                 ["Status", claim.status],
                 ["Claim type", claim.claim_type],
                 ["Claiming party", claim.claiming_party],

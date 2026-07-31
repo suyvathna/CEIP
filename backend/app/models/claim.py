@@ -34,6 +34,21 @@ class Claim(Base):
         nullable=False,
     )
 
+    # The Contractor's own claim reference, as it would appear on the
+    # Notice of Claim itself (e.g. "NOC-014") - auto-generated sequentially
+    # per project if left blank, but editable since many Cambodian
+    # contractors tie claim numbering to their own correspondence/RFI
+    # register rather than a bare sequence.
+    claim_no: Mapped[str | None] = mapped_column(String(50))
+
+    # The substantive entitlement clause (e.g. "Sub-Clause 8.5(c) -
+    # Exceptionally Adverse Climatic Conditions", "Sub-Clause 13.1 -
+    # Variation"). Deliberately separate from the Sub-Clause 20.2 process
+    # this whole claim record already tracks: 20.2 is HOW you claim,
+    # governing_clause is WHY you're entitled to claim at all, and an
+    # Engineer's first question on any claim is exactly that "why".
+    governing_clause: Mapped[str | None] = mapped_column(String(255))
+
     claim_type: Mapped[str] = mapped_column(String(20), nullable=False)
 
     claiming_party: Mapped[str] = mapped_column(String(20), nullable=False)

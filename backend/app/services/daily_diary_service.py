@@ -19,6 +19,42 @@ def _hydrate(db: Session, diary: DailyDiary) -> DailyDiary:
     return diary
 
 
+def _auto_link_same_day_events(db: Session, db_diary: DailyDiary) -> None:
+    """
+    A diary entry and an Event logged for the same project on the same
+    calendar date are almost always describing the same working day, so
+    they're linked automatically the moment either one is saved - no
+    manual "attach this diary to that event" step required. Skips
+    db_diary's own primary event_id (already linked) and anything already
+    linked via DiaryEventLink.
+    """
+    same_day_event_ids = set(
+        db.scalars(
+            select(Event.id).where(
+                Event.project_id == db_diary.project_id,
+                Event.event_date == db_diary.diary_date,
+            )
+        ).all()
+    )
+
+    if db_diary.event_id:
+        same_day_event_ids.discard(db_diary.event_id)
+
+    if not same_day_event_ids:
+        return
+
+    already_linked = set(
+        db.scalars(
+            select(DiaryEventLink.event_id).where(
+                DiaryEventLink.diary_id == db_diary.id
+            )
+        ).all()
+    )
+
+    for event_id in same_day_event_ids - already_linked:
+        db.add(DiaryEventLink(diary_id=db_diary.id, event_id=event_id))
+
+
 def create_daily_diary(
     db: Session,
     diary: DailyDiaryCreate,
@@ -33,6 +69,8 @@ def create_daily_diary(
 
     for event_id in additional_event_ids:
         db.add(DiaryEventLink(diary_id=db_diary.id, event_id=event_id))
+
+    _auto_link_same_day_events(db, db_diary)
 
     db.commit()
     db.refresh(db_diary)

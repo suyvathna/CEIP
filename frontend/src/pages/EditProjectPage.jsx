@@ -2,6 +2,17 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { getProject, updateProject } from "../api/projects";
 
+const CURRENCIES = ["USD", "KHR", "THB", "EUR"];
+
+function previewCompletionDate(startDate, durationDays) {
+  if (!startDate || !durationDays) return null;
+  const start = new Date(`${startDate}T00:00:00`);
+  if (Number.isNaN(start.getTime())) return null;
+  const finish = new Date(start);
+  finish.setDate(finish.getDate() + Number(durationDays));
+  return finish.toISOString().slice(0, 10);
+}
+
 function EditProjectPage() {
   const { projectId } = useParams();
   const [formData, setFormData] = useState(null);
@@ -19,10 +30,14 @@ function EditProjectPage() {
           contractor_name: project.contractor_name || "",
           engineer_name: project.engineer_name || "",
           contract_type: project.contract_type,
+          contract_no: project.contract_no || "",
+          site_address: project.site_address || "",
           country: project.country,
           city: project.city,
           planned_start: project.planned_start,
-          planned_finish: project.planned_finish,
+          duration_days: project.duration_days,
+          currency: project.currency || "USD",
+          contract_value: project.contract_value ?? "",
           // Must be resent on every save - the update endpoint has no
           // partial-update semantics, so omitting these would silently
           // reset a project's claim-clock periods back to the FIDIC
@@ -47,6 +62,8 @@ function EditProjectPage() {
     try {
       await updateProject(projectId, {
         ...formData,
+        duration_days: Number(formData.duration_days) || 0,
+        contract_value: formData.contract_value === "" ? null : Number(formData.contract_value),
         notice_period_days: Number(formData.notice_period_days),
         detailed_claim_period_days: Number(formData.detailed_claim_period_days),
         engineer_late_notice_flag_days: Number(formData.engineer_late_notice_flag_days),
@@ -62,6 +79,11 @@ function EditProjectPage() {
   if (error && !formData) return <p>Something went wrong: {error}</p>;
   if (!formData) return <p>Loading...</p>;
 
+  const completionPreview = previewCompletionDate(
+    formData.planned_start,
+    formData.duration_days
+  );
+
   return (
     <div className="edit-project-page legacy-page">
       <Link to={`/projects/${projectId}`}>&larr; Back to project</Link>
@@ -74,6 +96,10 @@ function EditProjectPage() {
         <label>
           Project name
           <input name="project_name" value={formData.project_name} onChange={handleChange} required />
+        </label>
+        <label>
+          Contract No.
+          <input name="contract_no" value={formData.contract_no} onChange={handleChange} />
         </label>
         <label>
           Client name
@@ -92,6 +118,10 @@ function EditProjectPage() {
           <input name="contract_type" value={formData.contract_type} onChange={handleChange} required />
         </label>
         <label>
+          Site address
+          <input name="site_address" value={formData.site_address} onChange={handleChange} />
+        </label>
+        <label>
           Country
           <input name="country" value={formData.country} onChange={handleChange} required />
         </label>
@@ -100,12 +130,41 @@ function EditProjectPage() {
           <input name="city" value={formData.city} onChange={handleChange} required />
         </label>
         <label>
-          Planned start
+          Commencement date
           <input type="date" name="planned_start" value={formData.planned_start} onChange={handleChange} required />
         </label>
         <label>
-          Planned finish
-          <input type="date" name="planned_finish" value={formData.planned_finish} onChange={handleChange} required />
+          Time for Completion (days)
+          <input
+            type="number"
+            min="1"
+            name="duration_days"
+            value={formData.duration_days}
+            onChange={handleChange}
+            required
+          />
+        </label>
+        <p className="form-hint">
+          Completion date{completionPreview ? `: ${completionPreview}` : ""} - calculated automatically from the commencement date + duration.
+        </p>
+        <label>
+          Currency
+          <select name="currency" value={formData.currency} onChange={handleChange}>
+            {CURRENCIES.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Contract value
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            name="contract_value"
+            value={formData.contract_value}
+            onChange={handleChange}
+          />
         </label>
 
         <fieldset>

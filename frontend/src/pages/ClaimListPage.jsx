@@ -107,7 +107,10 @@ function ClaimListPage() {
               >
                 <ListItemText
                   primary={
-                    <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                    <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
+                      {claim.claim_no && (
+                        <Chip size="small" variant="outlined" color="primary" label={claim.claim_no} />
+                      )}
                       <Typography variant="body1" fontWeight={600}>
                         {claim.title}
                       </Typography>
@@ -120,8 +123,8 @@ function ClaimListPage() {
                     </Stack>
                   }
                   secondary={`${claim.claiming_party} — aware since ${claim.awareness_date}${
-                    claim.claimed_days ? ` — claiming ${claim.claimed_days} days` : ""
-                  }`}
+                    claim.governing_clause ? ` — ${claim.governing_clause}` : ""
+                  }${claim.claimed_days ? ` — claiming ${claim.claimed_days} days` : ""}`}
                 />
               </ListItemButton>
             ))}
