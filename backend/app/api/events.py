@@ -5,11 +5,17 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.schemas.event import EventCreate, EventResponse, NoticeGivenRequest
+from app.schemas.event import (
+    EventCreate,
+    EventRequirementsOut,
+    EventResponse,
+    NoticeGivenRequest,
+)
 from app.services.event_service import (
     create_event_service,
     delete_event_service,
     get_event_service,
+    get_event_requirements_service,
     search_events_by_date_service,
     search_events_service,
     update_event_service,
@@ -136,6 +142,30 @@ def read_event(
         )
 
     return event
+
+
+@router.get("/{event_id}/requirements", response_model=EventRequirementsOut)
+def read_event_requirements(
+    event_id: UUID,
+    db: Session = Depends(get_db),
+):
+    """
+    The FIDIC-clause driven "required records" checklist for this event
+    (e.g. Adverse Weather -> Official Weather Data + Daily Log showing
+    halted work + Photos), plus the clause reference info (if this
+    event_type maps to one) for the "why" behind the checklist. Used both
+    on the Event detail page and by the Claim workflow to gate advancing
+    a claim past Sub-Clause 20.2.4 submission (see claim_service).
+    """
+    requirements = get_event_requirements_service(db, event_id)
+
+    if requirements is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Event not found",
+        )
+
+    return requirements
 
 
 @router.put("/{event_id}", response_model=EventResponse)

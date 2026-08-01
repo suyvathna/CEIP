@@ -36,6 +36,52 @@ export function unlinkClaimEvent(claimId, eventId) {
   });
 }
 
+export function getClaimDailyLogs(claimId) {
+  return apiRequest(`/claims/${claimId}/daily-logs`);
+}
+
+export function linkClaimDailyLog(claimId, dailyLogId) {
+  return apiRequest(`/claims/${claimId}/daily-logs`, {
+    method: "POST",
+    body: JSON.stringify({ daily_log_id: dailyLogId }),
+  });
+}
+
+export function unlinkClaimDailyLog(claimId, dailyLogId) {
+  return apiRequest(`/claims/${claimId}/daily-logs/${dailyLogId}`, {
+    method: "DELETE",
+  });
+}
+
+export function getClaimEvidenceList(claimId) {
+  return apiRequest(`/claims/${claimId}/evidence`);
+}
+
+export function linkClaimEvidence(claimId, evidenceId) {
+  return apiRequest(`/claims/${claimId}/evidence`, {
+    method: "POST",
+    body: JSON.stringify({ evidence_id: evidenceId }),
+  });
+}
+
+export function unlinkClaimEvidence(claimId, evidenceId) {
+  return apiRequest(`/claims/${claimId}/evidence/${evidenceId}`, {
+    method: "DELETE",
+  });
+}
+
+export function getClaimRequirements(claimId) {
+  return apiRequest(`/claims/${claimId}/requirements`);
+}
+
+export function getEngineerDetermination(claimId) {
+  return apiRequest(`/claims/${claimId}/engineer-determination`);
+}
+
+export function getClaimClauseOptions() {
+  return apiRequest("/claims/clause-options");
+}
+
 export function submitClaimNotice(claimId, data) {
   return apiRequest(`/claims/${claimId}/notice`, {
     method: "PATCH",

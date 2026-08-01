@@ -206,6 +206,60 @@ body {
   gap: 8px;
 }
 
+.requirements-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin: 20px 0;
+}
+
+.clause-reference {
+  background: #f4f6fb;
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.clause-basis {
+  font-weight: 600;
+  font-size: 13px;
+  color: #1c4f9c;
+}
+
+.clause-summary {
+  font-size: 14px;
+}
+
+.requirements-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.requirements-checklist li {
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  font-size: 14px;
+}
+
+.requirement-met {
+  background: #dcefe1;
+  color: #1f6b3a;
+}
+
+.requirement-missing {
+  background: #fbdcdc;
+  color: #a3231c;
+}
+
+.requirement-status {
+  font-weight: 700;
+}
+
 .project-actions {
   display: flex;
   align-items: center;
@@ -220,13 +274,105 @@ body {
   background: #8f1e18;
 }
 
-.diary-entry,
+.daily-log-entry,
 .evidence-item {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   padding: 12px 16px;
   margin-bottom: 10px;
+}
+
+/* The Daily Log form has several wide, table-based sections (Manpower,
+   Equipment, Delivery, Inspection, HSE, Visitors, Weather Observations,
+   Daily Snapshot) that the standard 480px legacy-page form width would
+   badly crush - it gets its own width. */
+.new-daily-log-page form {
+  max-width: 900px;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px 14px;
+}
+
+.field-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.field-grid input {
+  font-family: inherit;
+  font-size: 14px;
+  padding: 6px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.repeatable-table-wrapper {
+  overflow-x: auto;
+  margin-bottom: 8px;
+}
+
+.repeatable-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13px;
+}
+
+.repeatable-table th,
+.repeatable-table td {
+  border: 1px solid var(--color-border);
+  padding: 4px 6px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.repeatable-table th {
+  background: var(--color-surface);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.repeatable-table input,
+.repeatable-table select {
+  width: 100%;
+  min-width: 70px;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 3px 5px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-sizing: border-box;
+}
+
+.repeatable-remove-row {
+  background: transparent;
+  border: none;
+  color: var(--color-danger);
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 2px 6px;
+}
+
+.repeatable-add-row {
+  margin-top: 6px;
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--color-primary);
 }
 
 .deadline-item {

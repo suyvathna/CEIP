@@ -34,7 +34,7 @@ function EventList({ projectId, events }) {
               >
                 <div>
                   <Typography variant="subtitle1" fontWeight={600}>
-                    {event.title}
+                    {event.event_no ? `${event.event_no} — ${event.title}` : event.title}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     {event.event_date} at {event.event_time} &mdash;{" "}

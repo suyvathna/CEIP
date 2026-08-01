@@ -149,9 +149,9 @@ function NewProjectPage() {
             required
           />
         </label>
-        <p className="form-hint">
-          Completion date{completionPreview ? `: ${completionPreview}` : " will be calculated automatically from the commencement date + duration."}
-        </p>
+        {completionPreview && (
+          <p className="form-hint">Completion date: {completionPreview}</p>
+        )}
         <label>
           Currency
           <select name="currency" value={formData.currency} onChange={handleChange}>

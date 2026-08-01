@@ -95,7 +95,7 @@ function DashboardPage() {
           <StatCard label="Closed Events" value={data.closed_events} />
         </Grid>
         <Grid size={{ xs: 6, sm: 4, md: 2.4 }}>
-          <StatCard label="Daily Diaries" value={data.total_daily_diaries} />
+          <StatCard label="Daily Logs" value={data.total_daily_logs} />
         </Grid>
         <Grid size={{ xs: 6, sm: 4, md: 2.4 }}>
           <StatCard label="Evidence Files" value={data.total_evidence} />

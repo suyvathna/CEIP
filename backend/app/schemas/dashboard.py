@@ -31,7 +31,7 @@ class DashboardResponse(BaseModel):
     project_name: str
 
     total_events: int
-    total_daily_diaries: int
+    total_daily_logs: int
     total_evidence: int
 
     open_events: int

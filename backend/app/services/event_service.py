@@ -5,44 +5,45 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from app.models.daily_diary import DailyDiary, DiaryEventLink
+from app.models.daily_log import DailyLog, DailyLogEventLink
 from app.models.evidence import Evidence
 from app.models.event import Event
 from app.models.project import Project
 from app.schemas.event import EventCreate
+from app.services.event_requirements_service import event_requirements_summary
 from app.services.notice_deadline_service import NOTICE_PERIOD_DAYS
 
 
-def _auto_link_same_day_diaries(db: Session, db_event: Event) -> None:
+def _auto_link_same_day_logs(db: Session, db_event: Event) -> None:
     """
-    Mirror of daily_diary_service._auto_link_same_day_events: an Event and
-    any Daily Diary already logged for the same project on the same date
+    Mirror of daily_log_service._auto_link_same_day_events: an Event and
+    any Daily Log already logged for the same project on the same date
     are linked automatically, in whichever order they happen to be
-    created. This removes the need for the old "add a diary entry from
+    created. This removes the need for the old "add a log entry from
     inside this event" flow - the two records find each other by date on
     their own.
     """
-    same_day_diaries = list(
+    same_day_logs = list(
         db.scalars(
-            select(DailyDiary).where(
-                DailyDiary.project_id == db_event.project_id,
-                DailyDiary.diary_date == db_event.event_date,
+            select(DailyLog).where(
+                DailyLog.project_id == db_event.project_id,
+                DailyLog.diary_date == db_event.event_date,
             )
         ).all()
     )
 
-    for diary in same_day_diaries:
-        if diary.event_id == db_event.id:
+    for daily_log in same_day_logs:
+        if daily_log.event_id == db_event.id:
             continue
 
         existing_link = db.scalar(
-            select(DiaryEventLink).where(
-                DiaryEventLink.diary_id == diary.id,
-                DiaryEventLink.event_id == db_event.id,
+            select(DailyLogEventLink).where(
+                DailyLogEventLink.daily_log_id == daily_log.id,
+                DailyLogEventLink.event_id == db_event.id,
             )
         )
         if existing_link is None:
-            db.add(DiaryEventLink(diary_id=diary.id, event_id=db_event.id))
+            db.add(DailyLogEventLink(daily_log_id=daily_log.id, event_id=db_event.id))
 
 
 def attach_notice_periods(db: Session, events):
@@ -77,13 +78,27 @@ def attach_notice_periods(db: Session, events):
     return event_list[0] if single else event_list
 
 
+def _next_event_no(db: Session, project_id: UUID) -> str:
+    """
+    "EVT-001", "EVT-002", ... scoped per project - mirrors Claim's
+    _next_claim_no. Only used when the Contractor leaves Event No. blank.
+    """
+    count = db.scalar(
+        select(func.count()).select_from(Event).where(Event.project_id == project_id)
+    )
+    return f"EVT-{(count or 0) + 1:03d}"
+
+
 def create_event_service(db: Session, event: EventCreate) -> Event:
-    db_event = Event(**event.model_dump())
+    payload = event.model_dump()
+    payload["event_no"] = payload.get("event_no") or _next_event_no(db, event.project_id)
+
+    db_event = Event(**payload)
 
     db.add(db_event)
     db.flush()
 
-    _auto_link_same_day_diaries(db, db_event)
+    _auto_link_same_day_logs(db, db_event)
 
     db.commit()
     db.refresh(db_event)
@@ -94,6 +109,14 @@ def create_event_service(db: Session, event: EventCreate) -> Event:
 def get_event_service(db: Session, event_id: UUID):
     event = db.get(Event, event_id)
     return attach_notice_periods(db, event) if event else None
+
+
+def get_event_requirements_service(db: Session, event_id: UUID):
+    event = db.get(Event, event_id)
+    if not event:
+        return None
+
+    return event_requirements_summary(db, event)
 
 def mark_notice_given_service(db: Session, event_id: UUID, notice_given_date: date):
     event = db.get(Event, event_id)
@@ -114,7 +137,14 @@ def update_event_service(db: Session, event_id: UUID, event: EventCreate):
     if not db_event:
         return None
 
-    for key, value in event.model_dump().items():
+    payload = event.model_dump()
+    # Never blank out an already-generated Event No. from an edit form
+    # that submits it empty - only overwrite when the caller actually
+    # supplied a new value.
+    if not payload.get("event_no"):
+        payload.pop("event_no", None)
+
+    for key, value in payload.items():
         setattr(db_event, key, value)
 
     db.commit()
@@ -135,7 +165,7 @@ def delete_event_service(db: Session, event_id: UUID):
     except IntegrityError:
         db.rollback()
         raise ValueError(
-            "This event still has diary entries or evidence recorded "
+            "This event still has daily log entries or evidence recorded "
             "under it. Delete those first, or keep the event as a record."
         )
 
@@ -184,10 +214,10 @@ def get_project_activity_service(db: Session, project_id: UUID):
             Event.event_time,
             Event.created_at,
             func.count(Evidence.id).label("evidence_count"),
-            func.count(DailyDiary.id).label("diary_exists"),
+            func.count(DailyLog.id).label("daily_log_exists"),
         )
         .outerjoin(Evidence, Evidence.event_id == Event.id)
-        .outerjoin(DailyDiary, DailyDiary.event_id == Event.id)
+        .outerjoin(DailyLog, DailyLog.event_id == Event.id)
         .where(Event.project_id == project_id)
         .group_by(
             Event.id,
@@ -212,7 +242,7 @@ def get_project_activity_service(db: Session, project_id: UUID):
             "event_date": activity.event_date,
             "event_time": activity.event_time,
             "evidence_count": activity.evidence_count,
-            "diary_exists": activity.diary_exists > 0,
+            "daily_log_exists": activity.daily_log_exists > 0,
             "created_at": activity.created_at,
         }
         for activity in activities

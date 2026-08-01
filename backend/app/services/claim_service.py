@@ -5,7 +5,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.constants.claim_status import ClaimResponseType, ClaimStatus
-from app.models.claim import Claim, ClaimEvent, ClaimResponse
+from app.models.claim import Claim, ClaimDailyLog, ClaimEvent, ClaimEvidence, ClaimResponse
+from app.models.daily_log import DailyLog
 from app.models.evidence import Evidence
 from app.models.event import Event
 from app.models.project import Project
@@ -18,7 +19,19 @@ from app.schemas.claim import (
 )
 from app.services.claim_clock_service import config_from_project, get_claim_clock, get_today
 from app.services.claim_fact_service import get_claim_facts, get_fact_summary
+from app.services.event_requirements_service import get_event_requirements
 from app.services.event_service import attach_notice_periods
+
+# Response types that represent a substantive Engineer decision (as
+# opposed to a procedural note like a late-notice flag or a request for
+# particulars) - the ones an "Engineer's Determination" summary panel, or
+# a report, should look at.
+DECISION_RESPONSE_TYPES = (
+    ClaimResponseType.AGREEMENT.value,
+    ClaimResponseType.PARTIAL_AGREEMENT.value,
+    ClaimResponseType.DISAGREEMENT.value,
+    ClaimResponseType.DETERMINATION.value,
+)
 
 
 def _get_project(db: Session, project_id: UUID) -> Project | None:
@@ -42,12 +55,14 @@ def create_claim(db: Session, payload: ClaimCreate) -> Claim:
         project_id=payload.project_id,
         claim_no=payload.claim_no or _next_claim_no(db, payload.project_id),
         governing_clause=payload.governing_clause,
+        claim_basis=payload.claim_basis,
         claim_type=payload.claim_type,
         claiming_party=payload.claiming_party,
         title=payload.title,
         description=payload.description,
         awareness_date=payload.awareness_date,
         claimed_days=payload.claimed_days,
+        claimed_cost_amount=payload.claimed_cost_amount,
         status=ClaimStatus.NOTIFIED.value,
     )
 
@@ -56,6 +71,12 @@ def create_claim(db: Session, payload: ClaimCreate) -> Claim:
 
     for event_id in payload.event_ids:
         db.add(ClaimEvent(claim_id=claim.id, event_id=event_id))
+
+    for daily_log_id in payload.daily_log_ids:
+        db.add(ClaimDailyLog(claim_id=claim.id, daily_log_id=daily_log_id))
+
+    for evidence_id in payload.evidence_ids:
+        db.add(ClaimEvidence(claim_id=claim.id, evidence_id=evidence_id))
 
     db.commit()
     db.refresh(claim)
@@ -118,6 +139,152 @@ def unlink_event(db: Session, claim_id: UUID, event_id: UUID) -> bool:
     return True
 
 
+def get_claim_daily_logs(db: Session, claim_id: UUID):
+    stmt = (
+        select(DailyLog)
+        .join(ClaimDailyLog, ClaimDailyLog.daily_log_id == DailyLog.id)
+        .where(ClaimDailyLog.claim_id == claim_id)
+        .order_by(DailyLog.diary_date)
+    )
+    return db.scalars(stmt).all()
+
+
+def link_daily_log(db: Session, claim_id: UUID, daily_log_id: UUID) -> ClaimDailyLog:
+    existing = db.scalar(
+        select(ClaimDailyLog).where(
+            ClaimDailyLog.claim_id == claim_id,
+            ClaimDailyLog.daily_log_id == daily_log_id,
+        )
+    )
+    if existing:
+        return existing
+
+    link = ClaimDailyLog(claim_id=claim_id, daily_log_id=daily_log_id)
+    db.add(link)
+    db.commit()
+    db.refresh(link)
+    return link
+
+
+def unlink_daily_log(db: Session, claim_id: UUID, daily_log_id: UUID) -> bool:
+    link = db.scalar(
+        select(ClaimDailyLog).where(
+            ClaimDailyLog.claim_id == claim_id,
+            ClaimDailyLog.daily_log_id == daily_log_id,
+        )
+    )
+    if not link:
+        return False
+
+    db.delete(link)
+    db.commit()
+    return True
+
+
+def get_claim_evidence(db: Session, claim_id: UUID):
+    stmt = (
+        select(Evidence)
+        .join(ClaimEvidence, ClaimEvidence.evidence_id == Evidence.id)
+        .where(ClaimEvidence.claim_id == claim_id)
+        .order_by(Evidence.created_at)
+    )
+    return db.scalars(stmt).all()
+
+
+def link_evidence(db: Session, claim_id: UUID, evidence_id: UUID) -> ClaimEvidence:
+    existing = db.scalar(
+        select(ClaimEvidence).where(
+            ClaimEvidence.claim_id == claim_id,
+            ClaimEvidence.evidence_id == evidence_id,
+        )
+    )
+    if existing:
+        return existing
+
+    link = ClaimEvidence(claim_id=claim_id, evidence_id=evidence_id)
+    db.add(link)
+    db.commit()
+    db.refresh(link)
+
+    evidence = db.get(Evidence, evidence_id)
+    if evidence is not None:
+        # Same "attached to a submitted claim is locked" rule Evidence
+        # already follows for notice_evidence_id.
+        evidence.is_locked = True
+        db.commit()
+
+    return link
+
+
+def unlink_evidence(db: Session, claim_id: UUID, evidence_id: UUID) -> bool:
+    link = db.scalar(
+        select(ClaimEvidence).where(
+            ClaimEvidence.claim_id == claim_id,
+            ClaimEvidence.evidence_id == evidence_id,
+        )
+    )
+    if not link:
+        return False
+
+    db.delete(link)
+    db.commit()
+    return True
+
+
+def get_claim_requirements(db: Session, claim_id: UUID) -> dict | None:
+    """
+    Rolls up the required-records checklist (see
+    event_requirements_service) across every Event linked to this claim.
+    Drives both the New Claim / Claim Detail page's readiness panel and
+    the Sub-Clause 20.2.4 submission gate in submit_detailed_claim below.
+    """
+    claim = db.get(Claim, claim_id)
+    if claim is None:
+        return None
+
+    events = get_claim_events(db, claim_id)
+    event_summaries = []
+    for event in events:
+        checklist = get_event_requirements(db, event)
+        if not checklist:
+            continue
+        event_summaries.append(
+            {
+                "event_id": event.id,
+                "event_no": event.event_no,
+                "title": event.title,
+                "checklist": checklist,
+                "all_satisfied": all(item["satisfied"] for item in checklist),
+            }
+        )
+
+    missing_count = sum(
+        1
+        for summary in event_summaries
+        for item in summary["checklist"]
+        if not item["satisfied"]
+    )
+
+    return {
+        "events": event_summaries,
+        "all_satisfied": all(s["all_satisfied"] for s in event_summaries),
+        "missing_count": missing_count,
+    }
+
+
+def get_engineer_determination(db: Session, claim_id: UUID) -> ClaimResponse | None:
+    """Latest substantive decision response - see DECISION_RESPONSE_TYPES."""
+    stmt = (
+        select(ClaimResponse)
+        .where(
+            ClaimResponse.claim_id == claim_id,
+            ClaimResponse.response_type.in_(DECISION_RESPONSE_TYPES),
+        )
+        .order_by(ClaimResponse.response_date.desc(), ClaimResponse.created_at.desc())
+    )
+    return db.scalars(stmt).first()
+
+
 def get_claim_responses(db: Session, claim_id: UUID):
     stmt = (
         select(ClaimResponse)
@@ -149,10 +316,7 @@ def get_claim_report_data(db: Session, claim_id: UUID) -> dict | None:
 
     responses = get_claim_responses(db, claim.id)
     decision_responses = [
-        r
-        for r in responses
-        if r.response_type
-        in ("Agreement", "PartialAgreement", "Disagreement", "Determination")
+        r for r in responses if r.response_type in DECISION_RESPONSE_TYPES
     ]
     engineer_responded_date = (
         decision_responses[-1].response_date if decision_responses else None
@@ -249,6 +413,26 @@ def submit_detailed_claim(
     if not claim:
         return None
 
+    # Required-records gate: don't let a fully detailed claim go in under
+    # Sub-Clause 20.2.4 if a linked Event is still missing the records its
+    # event_type requires (e.g. an Adverse Weather claim with no Official
+    # Weather Data attached yet) - see event_requirements_service. Raised
+    # as ValueError so the API layer can surface it as a 409 with the
+    # specific missing items, rather than silently accepting an
+    # under-evidenced claim.
+    requirements = get_claim_requirements(db, claim_id)
+    if requirements and not requirements["all_satisfied"]:
+        missing = [
+            f"{event['event_no'] or event['title']}: {item['label']}"
+            for event in requirements["events"]
+            for item in event["checklist"]
+            if not item["satisfied"]
+        ]
+        raise ValueError(
+            "This claim's linked events are missing required records before "
+            "a fully detailed claim can be submitted: " + "; ".join(missing)
+        )
+
     claim.detailed_claim_submitted_date = payload.detailed_claim_submitted_date
     claim.legal_basis_statement = payload.legal_basis_statement
     claim.particulars = payload.particulars
@@ -289,6 +473,7 @@ def engineer_respond(
             response_type=payload.response_type,
             response_date=payload.response_date,
             days_granted=payload.days_granted,
+            cost_awarded_amount=payload.cost_awarded_amount,
             comment=payload.comment,
             responded_by=payload.responded_by,
         )

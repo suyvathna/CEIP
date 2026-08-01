@@ -2,11 +2,40 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { getEvent, updateEvent } from "../api/events";
 
-// Must match NewEventPage.jsx / the backend EventType enum.
-const EVENT_TYPES = [
-  "Progress", "Delay", "Weather", "Adverse Weather", "Quality", "Safety",
-  "RFI", "Instruction", "Inspection", "Delivery",
-  "Design Change / Variation Order", "Access Restriction", "Incident", "Other",
+// Must match app.constants.event_types.EventType on the backend exactly -
+// same grouping as NewEventPage.jsx (kept in sync manually; see that
+// file's comment for why this can't drift).
+const EVENT_TYPE_GROUPS = [
+  {
+    label: "Operational",
+    options: [
+      "Progress", "Delay", "Weather", "Quality", "Safety", "RFI",
+      "Instruction", "Inspection", "Delivery", "Incident",
+      "Access Restriction", "Other",
+    ],
+  },
+  {
+    label: "FIDIC Red Book 2017 delay / claim grounds",
+    options: [
+      "Adverse Weather",
+      "Design Change / Variation Order",
+      "Delayed Drawings or Instructions",
+      "Late Access to Site",
+      "Errors in Setting-Out Data",
+      "Unforeseeable Physical Conditions",
+      "Fossils / Antiquities",
+      "Employer-Instructed Additional Testing",
+      "Delay Caused by Authorities",
+      "Employer's Suspension of Work",
+      "Interference with Tests on Completion",
+      "Change in Laws",
+      "Exceptional Event (Force Majeure)",
+      "Epidemic / Government Action Shortage",
+      "Contractor's Suspension for Non-Payment",
+      "Late Payment by Employer",
+      "Employer-Caused Delay (General)",
+    ],
+  },
 ];
 const SEVERITIES = ["Low", "Medium", "High"];
 
@@ -21,6 +50,7 @@ function EditEventPage() {
     getEvent(eventId)
       .then((event) => {
         setFormData({
+          event_no: event.event_no || "",
           title: event.title,
           description: event.description || "",
           event_date: event.event_date,
@@ -59,6 +89,10 @@ function EditEventPage() {
       <h1>Edit Event</h1>
       <form onSubmit={handleSubmit}>
         <label>
+          Event No.
+          <input name="event_no" value={formData.event_no} onChange={handleChange} />
+        </label>
+        <label>
           Title
           <input name="title" value={formData.title} onChange={handleChange} required />
         </label>
@@ -67,18 +101,22 @@ function EditEventPage() {
           <textarea name="description" value={formData.description} onChange={handleChange} />
         </label>
         <label>
-          Event date
+          Date of Occurrence
           <input type="date" name="event_date" value={formData.event_date} onChange={handleChange} required />
         </label>
         <label>
-          Event time
+          Time of Occurrence
           <input type="time" name="event_time" value={formData.event_time} onChange={handleChange} required />
         </label>
         <label>
           Event type
           <select name="event_type" value={formData.event_type} onChange={handleChange}>
-            {EVENT_TYPES.map((type) => (
-              <option key={type} value={type}>{type}</option>
+            {EVENT_TYPE_GROUPS.map((group) => (
+              <optgroup key={group.label} label={group.label}>
+                {group.options.map((type) => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </label>

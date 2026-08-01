@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, Link as RouterLink } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSnackbar } from "notistack";
 import Typography from "@mui/material/Typography";
@@ -18,9 +18,9 @@ import AddIcon from "@mui/icons-material/Add";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { getProject, deleteProject, updateProjectStatus } from "../api/projects";
 import { getProjectEvents } from "../api/events";
-import { getProjectDiaries } from "../api/dailyDiaries";
+import { getProjectDailyLogs } from "../api/dailyLogs";
 import EventList from "../components/EventList";
-import DiaryList from "../components/DiaryList";
+import DailyLogList from "../components/DailyLogList";
 import ProjectNav from "../components/ProjectNav";
 import { projectStatusColor } from "../theme";
 
@@ -111,7 +111,17 @@ function ProjectDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { enqueueSnackbar } = useSnackbar();
-  const [activityTab, setActivityTab] = useState("events");
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Landing here from a Report tab stat tile (e.g. "High Severity")
+  // arrives with ?tab=events&severity=High - pick that up on first
+  // render so the right tab and filter are already showing, instead of
+  // making the Contractor navigate there by hand.
+  const [activityTab, setActivityTab] = useState(
+    () => searchParams.get("tab") || "events"
+  );
+  const severityFilter = searchParams.get("severity");
+  const statusFilter = searchParams.get("status");
+  const hasEventFilter = Boolean(severityFilter || statusFilter);
 
   const projectQuery = useQuery({
     queryKey: ["project", projectId],
@@ -123,9 +133,9 @@ function ProjectDetailPage() {
     queryFn: () => getProjectEvents(projectId),
   });
 
-  const diariesQuery = useQuery({
-    queryKey: ["projectDiaries", projectId],
-    queryFn: () => getProjectDiaries(projectId),
+  const dailyLogsQuery = useQuery({
+    queryKey: ["projectDailyLogs", projectId],
+    queryFn: () => getProjectDailyLogs(projectId),
   });
 
   const deleteMutation = useMutation({
@@ -146,6 +156,13 @@ function ProjectDetailPage() {
       return;
     }
     deleteMutation.mutate();
+  }
+
+  function clearEventFilter() {
+    const next = new URLSearchParams(searchParams);
+    next.delete("severity");
+    next.delete("status");
+    setSearchParams(next);
   }
 
   function refreshProject() {
@@ -272,18 +289,26 @@ function ProjectDetailPage() {
         direction="row"
         sx={{ justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1 }}
       >
-        <Tabs value={activityTab} onChange={(_, v) => setActivityTab(v)}>
+        <Tabs
+          value={activityTab}
+          onChange={(_, v) => {
+            setActivityTab(v);
+            const next = new URLSearchParams(searchParams);
+            next.set("tab", v);
+            setSearchParams(next);
+          }}
+        >
           <Tab value="events" label="Events" />
-          <Tab value="diary" label="Daily Diary" />
+          <Tab value="dailyLog" label="Daily Log" />
         </Tabs>
         <Stack direction="row" spacing={1}>
           <Button
             component={RouterLink}
-            to={`/projects/${projectId}/diary/new`}
+            to={`/projects/${projectId}/daily-log/new`}
             startIcon={<AddIcon fontSize="small" />}
             variant="outlined"
           >
-            New Diary Entry
+            New Daily Log
           </Button>
           <Button
             component={RouterLink}
@@ -298,23 +323,45 @@ function ProjectDetailPage() {
 
       {activityTab === "events" && (
         <>
+          {hasEventFilter && (
+            <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+              {severityFilter && (
+                <Chip size="small" label={`Severity: ${severityFilter}`} />
+              )}
+              {statusFilter && (
+                <Chip size="small" label={`Status: ${statusFilter}`} />
+              )}
+              <Button size="small" onClick={clearEventFilter}>
+                Clear filter
+              </Button>
+            </Stack>
+          )}
           {eventsQuery.isLoading && <CircularProgress size={24} />}
           {eventsQuery.isError && (
             <Alert severity="error">{eventsQuery.error.message}</Alert>
           )}
           {eventsQuery.data && (
-            <EventList projectId={projectId} events={eventsQuery.data} />
+            <EventList
+              projectId={projectId}
+              events={eventsQuery.data.filter(
+                (event) =>
+                  (!severityFilter || event.severity === severityFilter) &&
+                  (!statusFilter || event.status === statusFilter)
+              )}
+            />
           )}
         </>
       )}
 
-      {activityTab === "diary" && (
+      {activityTab === "dailyLog" && (
         <>
-          {diariesQuery.isLoading && <CircularProgress size={24} />}
-          {diariesQuery.isError && (
-            <Alert severity="error">{diariesQuery.error.message}</Alert>
+          {dailyLogsQuery.isLoading && <CircularProgress size={24} />}
+          {dailyLogsQuery.isError && (
+            <Alert severity="error">{dailyLogsQuery.error.message}</Alert>
           )}
-          {diariesQuery.data && <DiaryList diaries={diariesQuery.data} />}
+          {dailyLogsQuery.data && (
+            <DailyLogList projectId={projectId} dailyLogs={dailyLogsQuery.data} />
+          )}
         </>
       )}
     </Stack>

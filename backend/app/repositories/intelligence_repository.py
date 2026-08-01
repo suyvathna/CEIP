@@ -1,7 +1,7 @@
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.models.daily_diary import DailyDiary
+from app.models.daily_log import DailyLog
 from app.models.event import Event
 from app.models.evidence import Evidence
 
@@ -22,17 +22,17 @@ def search_events(
     )
 
 
-def search_daily_diaries(
+def search_daily_logs(
     db: Session,
     keyword: str,
 ):
     return (
-        db.query(DailyDiary)
+        db.query(DailyLog)
         .filter(
             or_(
-                DailyDiary.work_completed.ilike(f"%{keyword}%"),
-                DailyDiary.delays.ilike(f"%{keyword}%"),
-                DailyDiary.remarks.ilike(f"%{keyword}%"),
+                DailyLog.work_completed.ilike(f"%{keyword}%"),
+                DailyLog.delays.ilike(f"%{keyword}%"),
+                DailyLog.remarks.ilike(f"%{keyword}%"),
             )
         )
         .all()

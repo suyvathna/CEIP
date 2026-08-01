@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { getEvent, markNoticeGiven, deleteEvent } from "../api/events";
-import { getEventDiaries } from "../api/dailyDiaries";
+import { getEvent, getEventRequirements, markNoticeGiven, deleteEvent } from "../api/events";
+import { getEventDailyLogs } from "../api/dailyLogs";
 import { getEventEvidence, deleteEvidence } from "../api/evidence";
 import { BASE_URL } from "../api/client";
 import { todayLocalISODate } from "../utils/date";
@@ -17,8 +17,9 @@ function EventDetailPage() {
   const { projectId, eventId } = useParams();
   const navigate = useNavigate();
   const [event, setEvent] = useState(null);
-  const [diaries, setDiaries] = useState([]);
+  const [dailyLogs, setDailyLogs] = useState([]);
   const [evidence, setEvidence] = useState([]);
+  const [requirements, setRequirements] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
@@ -30,13 +31,15 @@ function EventDetailPage() {
     setLoading(true);
     return Promise.all([
       getEvent(eventId),
-      getEventDiaries(eventId),
+      getEventDailyLogs(eventId),
       getEventEvidence(eventId),
+      getEventRequirements(eventId),
     ])
-      .then(([eventData, diaryData, evidenceData]) => {
+      .then(([eventData, dailyLogData, evidenceData, requirementsData]) => {
         setEvent(eventData);
-        setDiaries(diaryData || []);
+        setDailyLogs(dailyLogData || []);
         setEvidence(evidenceData || []);
+        setRequirements(requirementsData || null);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -97,7 +100,7 @@ function EventDetailPage() {
     <div className="event-detail legacy-page">
       <Link to={`/projects/${projectId}`}>&larr; Back to project</Link>
       <div className="page-header">
-        <h1>{event.title}</h1>
+        <h1>{event.event_no ? `${event.event_no} — ${event.title}` : event.title}</h1>
         <div className="project-actions">
           <Link to={`/projects/${projectId}/events/${eventId}/edit`}>Edit</Link>
           <button onClick={handleDelete} className="danger-button">Delete</button>
@@ -105,7 +108,7 @@ function EventDetailPage() {
       </div>
       {deleteError && <p className="form-error">{deleteError}</p>}
       <p>
-        {event.event_date}{" "}
+        Date of Occurrence: {event.event_date}{" "}
         {event.event_time ? `at ${event.event_time}` : ""}
       </p>
       <p>
@@ -161,28 +164,80 @@ function EventDetailPage() {
         )}
       </div>
 
-      {/* Diary Entries Section - read-only here. A diary is no longer
-          created "from inside" an event: any Daily Diary entry logged for
+      {/* FIDIC Clause & Required Records Panel - only rendered when this
+          event_type maps to a checklist (see event_requirements_service
+          on the backend); purely operational event types return an
+          empty checklist and this panel is skipped entirely. */}
+      {requirements && requirements.checklist.length > 0 && (
+        <div className="requirements-panel">
+          <h2>FIDIC Claim Readiness</h2>
+
+          {requirements.clause_reference && (
+            <div className="clause-reference">
+              <p>
+                <strong>{requirements.clause_reference.clause_code}</strong>
+                {" — "}
+                {requirements.clause_reference.clause_title}
+              </p>
+              <p className="clause-basis">Entitlement: {requirements.clause_reference.basis}</p>
+              <p className="clause-summary">{requirements.clause_reference.summary}</p>
+              <p className="form-hint">
+                Clause references are a drafting aid based on the unamended FIDIC
+                Red Book 2017 General Conditions - always verify against this
+                project's actual Particular Conditions before citing in a Notice
+                of Claim.
+              </p>
+            </div>
+          )}
+
+          <p>
+            {requirements.all_satisfied
+              ? "All required records for this event type are attached."
+              : "This event type needs the following records before a claim built on it is ready to submit:"}
+          </p>
+          <ul className="requirements-checklist">
+            {requirements.checklist.map((item) => (
+              <li
+                key={item.kind}
+                className={item.satisfied ? "requirement-met" : "requirement-missing"}
+              >
+                <span className="requirement-status">{item.satisfied ? "✓" : "✗"}</span>{" "}
+                <strong>{item.label}</strong> — {item.detail}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Daily Log Section - read-only here. A Daily Log is no longer
+          created "from inside" an event: any Daily Log entry logged for
           this project on the same date links to this event automatically
-          (and vice versa). Add/edit diary entries from the project's
-          Daily Diary tab instead. */}
+          (and vice versa). Add/edit Daily Log entries from the project's
+          Daily Log tab instead. */}
       <div className="section-header">
-        <h2>Linked Daily Diary</h2>
-        <Link to={`/projects/${projectId}`}>Go to Daily Diary tab</Link>
+        <h2>Linked Daily Log</h2>
+        <Link to={`/projects/${projectId}`}>Go to Daily Log tab</Link>
       </div>
-      {diaries.length === 0 ? (
+      {dailyLogs.length === 0 ? (
         <p>
-          No diary entry for {event.event_date} yet. Log one from the
-          project's Daily Diary tab and it will link here automatically.
+          No Daily Log entry for {event.event_date} yet. Log one from the
+          project's Daily Log tab and it will link here automatically.
         </p>
       ) : (
-        diaries.map((diary) => (
-          <div key={diary.id} className="diary-entry">
+        dailyLogs.map((dailyLog) => (
+          <div key={dailyLog.id} className="daily-log-entry">
             <p>
-              <strong>{diary.diary_date}</strong>
+              <Link to={`/projects/${projectId}/daily-log/${dailyLog.id}`}>
+                <strong>{dailyLog.diary_date}</strong>
+              </Link>
             </p>
-            {diary.work_completed && <p>Work: {diary.work_completed}</p>}
-            {diary.manpower && <p>Manpower: {diary.manpower}</p>}
+            {dailyLog.work_completed && <p>Work: {dailyLog.work_completed}</p>}
+            {dailyLog.manpower_notes && <p>Manpower notes: {dailyLog.manpower_notes}</p>}
+            {dailyLog.total_workers > 0 && (
+              <p>
+                {dailyLog.total_workers} workers logged ({dailyLog.total_man_hours} man-hours)
+              </p>
+            )}
           </div>
         ))
       )}

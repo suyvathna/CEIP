@@ -23,12 +23,17 @@ import {
   getClaim,
   getClaimClock,
   getClaimEvents,
+  getClaimDailyLogs,
+  getClaimEvidenceList,
+  getClaimRequirements,
+  getEngineerDetermination,
   submitClaimNotice,
   flagClaimLateNotice,
   submitDetailedClaim,
   submitEngineerResponse,
   createClaimAccessLink,
   downloadClaimReportPdf,
+  getClaimClauseOptions,
 } from "../api/claims";
 import {
   getClaimFacts,
@@ -97,6 +102,132 @@ function ClockPanel({ claimId }) {
   );
 }
 
+function ClaimRequirementsPanel({ claimId }) {
+  const requirementsQuery = useQuery({
+    queryKey: ["claimRequirements", claimId],
+    queryFn: () => getClaimRequirements(claimId),
+  });
+
+  if (requirementsQuery.isLoading) return <CircularProgress size={20} />;
+  if (requirementsQuery.isError) return null;
+
+  const requirements = requirementsQuery.data;
+
+  // No linked event carries a FIDIC-driven records checklist (e.g. a
+  // purely operational event type, or no events linked yet) - nothing
+  // useful to show, so skip the panel entirely rather than show an
+  // empty "all satisfied" box that would be misleading.
+  if (!requirements || requirements.events.length === 0) return null;
+
+  return (
+    <Paper sx={{ p: 3 }}>
+      <Typography variant="h6" gutterBottom>
+        Claim Readiness
+      </Typography>
+      {!requirements.all_satisfied && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {requirements.missing_count} required record(s) still missing across
+          this claim's linked events. The fully detailed claim (Step 2 below)
+          can't be submitted until these are attached.
+        </Alert>
+      )}
+      {requirements.all_satisfied && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          All required records are attached for every linked event.
+        </Alert>
+      )}
+      <Stack spacing={2}>
+        {requirements.events.map((event) => (
+          <div key={event.event_id}>
+            <Typography variant="subtitle2">
+              {event.event_no ? `${event.event_no} — ` : ""}
+              {event.title}
+            </Typography>
+            <List dense disablePadding>
+              {event.checklist.map((item) => (
+                <ListItem key={item.kind} disableGutters>
+                  <ListItemText
+                    primary={`${item.satisfied ? "✓" : "✗"} ${item.label}`}
+                    secondary={item.detail}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </div>
+        ))}
+      </Stack>
+    </Paper>
+  );
+}
+
+function EngineerDeterminationPanel({ claimId }) {
+  const determinationQuery = useQuery({
+    queryKey: ["claimEngineerDetermination", claimId],
+    queryFn: () => getEngineerDetermination(claimId),
+  });
+
+  return (
+    <Paper sx={{ p: 3 }}>
+      <Typography variant="h6" gutterBottom>
+        Engineer's Determination
+      </Typography>
+      {determinationQuery.isLoading && <CircularProgress size={20} />}
+      {!determinationQuery.isLoading && !determinationQuery.data && (
+        <Typography variant="body2" color="text.secondary">
+          No Engineer decision recorded yet.
+        </Typography>
+      )}
+      {determinationQuery.data && (
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 6, sm: 3 }}>
+            <Typography variant="caption" color="text.secondary">
+              Response type
+            </Typography>
+            <Typography variant="body1">{determinationQuery.data.response_type}</Typography>
+          </Grid>
+          <Grid size={{ xs: 6, sm: 3 }}>
+            <Typography variant="caption" color="text.secondary">
+              Response date
+            </Typography>
+            <Typography variant="body1">{determinationQuery.data.response_date}</Typography>
+          </Grid>
+          <Grid size={{ xs: 6, sm: 3 }}>
+            <Typography variant="caption" color="text.secondary">
+              EOT awarded (days)
+            </Typography>
+            <Typography variant="body1">
+              {determinationQuery.data.eot_awarded_days ?? "—"}
+            </Typography>
+          </Grid>
+          <Grid size={{ xs: 6, sm: 3 }}>
+            <Typography variant="caption" color="text.secondary">
+              Cost awarded
+            </Typography>
+            <Typography variant="body1">
+              {determinationQuery.data.cost_awarded_amount ?? "—"}
+            </Typography>
+          </Grid>
+          {determinationQuery.data.comment && (
+            <Grid size={12}>
+              <Typography variant="caption" color="text.secondary">
+                Engineer's comment
+              </Typography>
+              <Typography variant="body2">{determinationQuery.data.comment}</Typography>
+            </Grid>
+          )}
+          {determinationQuery.data.responded_by && (
+            <Grid size={12}>
+              <Typography variant="caption" color="text.secondary">
+                Responded by: {determinationQuery.data.responded_by}
+              </Typography>
+            </Grid>
+          )}
+        </Grid>
+      )}
+    </Paper>
+  );
+}
+
 function WorkflowActions({ claim, claimId, onChanged }) {
   const { enqueueSnackbar } = useSnackbar();
   const [noticeDate, setNoticeDate] = useState("");
@@ -106,6 +237,7 @@ function WorkflowActions({ claim, claimId, onChanged }) {
   const [responseType, setResponseType] = useState("Agreement");
   const [responseDate, setResponseDate] = useState("");
   const [daysGranted, setDaysGranted] = useState("");
+  const [costAwarded, setCostAwarded] = useState("");
   const [responseComment, setResponseComment] = useState("");
   const [respondedBy, setRespondedBy] = useState("");
   const [flagDate, setFlagDate] = useState("");
@@ -150,6 +282,7 @@ function WorkflowActions({ claim, claimId, onChanged }) {
         response_type: responseType,
         response_date: responseDate,
         days_granted: daysGranted === "" ? null : Number(daysGranted),
+        cost_awarded_amount: costAwarded === "" ? null : Number(costAwarded),
         comment: responseComment || null,
         responded_by: respondedBy || null,
       }),
@@ -303,6 +436,13 @@ function WorkflowActions({ claim, claimId, onChanged }) {
               label="Days granted (if applicable)"
               value={daysGranted}
               onChange={(e) => setDaysGranted(e.target.value)}
+            />
+            <TextField
+              type="number"
+              size="small"
+              label="Cost awarded (if applicable)"
+              value={costAwarded}
+              onChange={(e) => setCostAwarded(e.target.value)}
             />
             <TextField
               size="small"
@@ -707,11 +847,28 @@ function ClaimDetailPage() {
     queryFn: () => getClaimEvents(claimId),
   });
 
+  const dailyLogsQuery = useQuery({
+    queryKey: ["claimDailyLogs", claimId],
+    queryFn: () => getClaimDailyLogs(claimId),
+  });
+
+  const evidenceQuery = useQuery({
+    queryKey: ["claimEvidenceList", claimId],
+    queryFn: () => getClaimEvidenceList(claimId),
+  });
+
+  const clauseOptionsQuery = useQuery({
+    queryKey: ["claimClauseOptions"],
+    queryFn: getClaimClauseOptions,
+  });
+
   function refreshAll() {
     queryClient.invalidateQueries({ queryKey: ["claim", claimId] });
     queryClient.invalidateQueries({ queryKey: ["claimClock", claimId] });
     queryClient.invalidateQueries({ queryKey: ["claimFacts", claimId] });
     queryClient.invalidateQueries({ queryKey: ["claimFactSummary", claimId] });
+    queryClient.invalidateQueries({ queryKey: ["claimRequirements", claimId] });
+    queryClient.invalidateQueries({ queryKey: ["claimEngineerDetermination", claimId] });
     queryClient.invalidateQueries({ queryKey: ["claims", projectId] });
   }
 
@@ -749,6 +906,21 @@ function ClaimDetailPage() {
         </Typography>
       )}
 
+      {claim.claim_basis &&
+        (() => {
+          const option = clauseOptionsQuery.data?.options?.find(
+            (o) => o.event_type === claim.claim_basis
+          );
+          if (!option) return null;
+          return (
+            <Alert severity="info">
+              Entitlement: {option.basis}
+              <br />
+              {option.summary}
+            </Alert>
+          );
+        })()}
+
       {claim.description && (
         <Typography variant="body1" color="text.secondary">
           {claim.description}
@@ -764,7 +936,7 @@ function ClaimDetailPage() {
             {eventsQuery.data.map((event) => (
               <ListItem key={event.id} disableGutters>
                 <ListItemText
-                  primary={`${event.event_date} — ${event.title}`}
+                  primary={`${event.event_no ? `${event.event_no} — ` : ""}${event.event_date} — ${event.title}`}
                   secondary={event.event_type}
                 />
               </ListItem>
@@ -775,10 +947,50 @@ function ClaimDetailPage() {
             No events linked.
           </Typography>
         )}
+
+        <Divider sx={{ my: 2 }} />
+
+        <Typography variant="subtitle2" gutterBottom>
+          Linked Daily Log entries
+        </Typography>
+        {dailyLogsQuery.data?.length ? (
+          <List dense disablePadding>
+            {dailyLogsQuery.data.map((log) => (
+              <ListItem key={log.id} disableGutters>
+                <ListItemText primary={log.diary_date} />
+              </ListItem>
+            ))}
+          </List>
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            No Daily Log entries linked.
+          </Typography>
+        )}
+
+        <Divider sx={{ my: 2 }} />
+
+        <Typography variant="subtitle2" gutterBottom>
+          Linked evidence
+        </Typography>
+        {evidenceQuery.data?.length ? (
+          <List dense disablePadding>
+            {evidenceQuery.data.map((item) => (
+              <ListItem key={item.id} disableGutters>
+                <ListItemText primary={item.filename || item.caption || `File ${item.id}`} />
+              </ListItem>
+            ))}
+          </List>
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            No evidence linked.
+          </Typography>
+        )}
       </Paper>
 
       <ClockPanel claimId={claimId} />
+      <ClaimRequirementsPanel claimId={claimId} />
       <WorkflowActions claim={claim} claimId={claimId} onChanged={refreshAll} />
+      <EngineerDeterminationPanel claimId={claimId} />
       <FactsRegister claimId={claimId} onChanged={refreshAll} />
       <DelayAnalysisPanel claimId={claimId} projectId={projectId} />
       <ShareReportPanel claimId={claimId} />

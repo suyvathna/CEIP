@@ -1,7 +1,7 @@
-from app.schemas.daily_diary import DailyDiaryResponse
+from app.schemas.daily_log import DailyLogResponse
 from app.schemas.event import EventResponse
 
 
-class DailyReportResponse(DailyDiaryResponse):
+class DailyReportResponse(DailyLogResponse):
     event: EventResponse | None
     evidence_count: int

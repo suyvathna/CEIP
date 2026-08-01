@@ -7,7 +7,8 @@ import NewProjectPage from "./pages/NewProjectPage";
 import EditProjectPage from "./pages/EditProjectPage";
 import NewEventPage from "./pages/NewEventPage";
 import EventDetailPage from "./pages/EventDetailPage";
-import NewDiaryPage from "./pages/NewDiaryPage";
+import NewDailyLogPage from "./pages/NewDailyLogPage";
+import DailyLogDetailPage from "./pages/DailyLogDetailPage";
 import NewEvidencePage from "./pages/NewEvidencePage";
 import LoginPage from "./pages/LoginPage";
 import DeadlinesDashboardPage from "./pages/DeadlinesDashboardPage";
@@ -18,7 +19,7 @@ import TimelinePage from "./pages/TimelinePage";
 import ProjectReportPage from "./pages/ProjectReportPage";
 import SearchResultsPage from "./pages/SearchResultsPage";
 import EventRedirectPage from "./pages/EventRedirectPage";
-import DiaryRedirectPage from "./pages/DiaryRedirectPage";
+import DailyLogRedirectPage from "./pages/DailyLogRedirectPage";
 import ClaimListPage from "./pages/ClaimListPage";
 import NewClaimPage from "./pages/NewClaimPage";
 import ClaimDetailPage from "./pages/ClaimDetailPage";
@@ -38,7 +39,7 @@ function App() {
           <Route path="/deadlines" element={<DeadlinesDashboardPage />} />
           <Route path="/search" element={<SearchResultsPage />} />
           <Route path="/events/:eventId" element={<EventRedirectPage />} />
-          <Route path="/diaries/:diaryId" element={<DiaryRedirectPage />} />
+          <Route path="/daily-logs/:dailyLogId" element={<DailyLogRedirectPage />} />
           <Route path="/" element={<ProjectListPage />} />
           <Route path="/projects/new" element={<NewProjectPage />} />
           <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
@@ -50,11 +51,14 @@ function App() {
           <Route path="/projects/:projectId/claims/new" element={<NewClaimPage />} />
           <Route path="/projects/:projectId/claims/:claimId" element={<ClaimDetailPage />} />
           <Route path="/projects/:projectId/programme" element={<ProgrammePage />} />
-          <Route path="/projects/:projectId/diary/new" element={<NewDiaryPage />} />
+          <Route path="/projects/:projectId/daily-log/new" element={<NewDailyLogPage />} />
+          <Route path="/projects/:projectId/daily-log/:dailyLogId" element={<DailyLogDetailPage />} />
+          <Route path="/projects/:projectId/daily-log/:dailyLogId/edit" element={<NewDailyLogPage />} />
+          <Route path="/projects/:projectId/daily-log/:dailyLogId/evidence/new" element={<NewEvidencePage />} />
           <Route path="/projects/:projectId/events/new" element={<NewEventPage />} />
           <Route path="/projects/:projectId/events/:eventId" element={<EventDetailPage />} />
           <Route path="/projects/:projectId/events/:eventId/edit" element={<EditEventPage />} />
-          <Route path="/projects/:projectId/events/:eventId/diary/new" element={<NewDiaryPage />} />
+          <Route path="/projects/:projectId/events/:eventId/daily-log/new" element={<NewDailyLogPage />} />
           <Route path="/projects/:projectId/events/:eventId/evidence/new" element={<NewEvidencePage />} />
         </Route>
       </Route>

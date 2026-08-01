@@ -17,7 +17,7 @@ class ActivityResponse(BaseModel):
 
     evidence_count: int
 
-    diary_exists: bool
+    daily_log_exists: bool
 
     created_at: datetime
 
