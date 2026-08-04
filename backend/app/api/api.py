@@ -16,6 +16,17 @@ from app.api.programme import router as programme_router
 from app.api.claim_access import router as claim_access_router
 from app.api.claim_access import public_router as public_claim_access_router
 
+# Engine A - the "ALWAYS DO" compliance scheduler, plus the unified
+# deadline feed both engines publish into.
+from app.api.compliance import router as compliance_router
+
+# Engine B - the "DO-IN-CASE" contractual state machine.
+from app.api.determinations import router as determination_router
+from app.api.variations import router as variation_router
+
+# The alert stream both engines write to.
+from app.api.notifications import router as notification_router
+
 api_router = APIRouter()
 
 api_router.include_router(project_router)
@@ -33,3 +44,7 @@ api_router.include_router(claim_fact_router)
 api_router.include_router(programme_router)
 api_router.include_router(claim_access_router)
 api_router.include_router(public_claim_access_router)
+api_router.include_router(compliance_router)
+api_router.include_router(determination_router)
+api_router.include_router(variation_router)
+api_router.include_router(notification_router)

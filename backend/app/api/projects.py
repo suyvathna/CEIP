@@ -2,12 +2,18 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.schemas.project import ProjectCreate, ProjectResponse, ProjectStatusUpdate
+from app.schemas.project import (
+    ProjectCreate,
+    ProjectMilestonesUpdate,
+    ProjectResponse,
+    ProjectStatusUpdate,
+)
 from app.services.project_service import (
     create_project,
     delete_project,
     get_project,
     get_projects,
+    update_milestones,
     update_project,
     update_project_status,
 )
@@ -60,6 +66,40 @@ def update_existing_project(
     db: Session = Depends(get_db),
 ):
     updated = update_project(db, project_id, project)
+
+    if updated is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Project not found",
+        )
+
+    return updated
+
+
+@router.patch("/{project_id}/milestones", response_model=ProjectResponse)
+def update_project_milestones(
+    project_id: UUID,
+    payload: ProjectMilestonesUpdate,
+    db: Session = Depends(get_db),
+):
+    """
+    Set the contract milestones and engine periods Engine A and Engine B
+    measure everything from: Letter of Acceptance, Taking-Over
+    Certificate, Performance Certificate, the Defects Notification
+    Period, and the Sub-Clause 3.7 / 3.5 / 13.3 windows.
+
+    A true PATCH - only the fields sent are written. That is why these
+    live here rather than on PUT /projects/{id}, whose body is
+    ProjectCreate and which setattr's every field on it: a PM editing a
+    project's city through the ordinary edit form would otherwise blank
+    its Taking-Over date and silently retire half the compliance
+    register.
+
+    Saving here regenerates the register immediately, so entering a
+    Taking-Over Certificate shows the 14.10 Statement at Completion
+    deadline and closes out the monthly obligations on the spot.
+    """
+    updated = update_milestones(db, project_id, payload)
 
     if updated is None:
         raise HTTPException(

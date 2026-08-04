@@ -38,3 +38,19 @@ export function updateProjectStatus(projectId, status) {
     body: JSON.stringify({ status }),
   });
 }
+
+// Contract milestones and engine periods: Letter of Acceptance,
+// Taking-Over Certificate, Performance Certificate, the Defects
+// Notification Period, and the Sub-Clause 3.7 / 3.5 / 13.3 windows.
+//
+// A true PATCH - only the keys sent are written. Deliberately NOT part
+// of updateProject above: that endpoint's body is the full ProjectCreate
+// schema and the server setattr's every field on it, so a PM editing the
+// project's city through the ordinary edit form would blank the
+// Taking-Over date and silently retire half the compliance register.
+export function updateProjectMilestones(projectId, data) {
+  return apiRequest(`/projects/${projectId}/milestones`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}

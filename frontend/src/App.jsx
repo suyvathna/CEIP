@@ -24,6 +24,12 @@ import ClaimListPage from "./pages/ClaimListPage";
 import NewClaimPage from "./pages/NewClaimPage";
 import ClaimDetailPage from "./pages/ClaimDetailPage";
 import ProgrammePage from "./pages/ProgrammePage";
+import CompliancePage from "./pages/CompliancePage";
+import VariationListPage from "./pages/VariationListPage";
+import NewVariationPage from "./pages/NewVariationPage";
+import VariationDetailPage from "./pages/VariationDetailPage";
+import DeterminationListPage from "./pages/DeterminationListPage";
+import DeterminationDetailPage from "./pages/DeterminationDetailPage";
 
 function App() {
   return (
@@ -47,9 +53,27 @@ function App() {
           <Route path="/projects/:projectId/dashboard" element={<DashboardPage />} />
           <Route path="/projects/:projectId/timeline" element={<TimelinePage />} />
           <Route path="/projects/:projectId/report" element={<ProjectReportPage />} />
+
+          {/* Engine A - the "ALWAYS DO" compliance register. The engines'
+              alerts link straight into these paths, so they have to match
+              the link_path values notification_service builds. */}
+          <Route path="/projects/:projectId/compliance" element={<CompliancePage />} />
+
           <Route path="/projects/:projectId/claims" element={<ClaimListPage />} />
           <Route path="/projects/:projectId/claims/new" element={<NewClaimPage />} />
           <Route path="/projects/:projectId/claims/:claimId" element={<ClaimDetailPage />} />
+
+          {/* Engine B - Clause 13 Variations and the Sub-Clause 3.5
+              instructions that might be one. */}
+          <Route path="/projects/:projectId/variations" element={<VariationListPage />} />
+          <Route path="/projects/:projectId/variations/new" element={<NewVariationPage />} />
+          <Route path="/projects/:projectId/variations/:variationId" element={<VariationDetailPage />} />
+
+          {/* Engine B - Sub-Clause 3.7 agreements/determinations and the
+              28-day Notice of Dissatisfaction window. */}
+          <Route path="/projects/:projectId/determinations" element={<DeterminationListPage />} />
+          <Route path="/projects/:projectId/determinations/:determinationId" element={<DeterminationDetailPage />} />
+
           <Route path="/projects/:projectId/programme" element={<ProgrammePage />} />
           <Route path="/projects/:projectId/daily-log/new" element={<NewDailyLogPage />} />
           <Route path="/projects/:projectId/daily-log/:dailyLogId" element={<DailyLogDetailPage />} />

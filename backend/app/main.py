@@ -1,13 +1,36 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI     #responsible for creating the FastAPI application instance
 from fastapi.middleware.cors import CORSMiddleware  #responsible for allowing the frontend (different origin) to call this API
 from sqlalchemy import text     #responsible for executing raw SQL queries
 
 from app.api import api_router  #responsible for including the API router that contains all the API endpoints
 from app.db.database import engine  #responsible for creating a connection to the database using SQLAlchemy's engine
+from app.scheduler import shutdown_scheduler, start_scheduler
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Starts and stops Engine A's daily sweep alongside the application.
+
+    start_scheduler never raises - if APScheduler is missing or the job
+    can't be registered, the API still comes up and the engines stay
+    usable through POST /compliance/tick. An API that refused to boot
+    because a background job failed to schedule would be a far worse
+    failure mode than a sweep somebody has to trigger by hand.
+    """
+    start_scheduler()
+    try:
+        yield
+    finally:
+        shutdown_scheduler()
+
 
 app = FastAPI(
     title="Construction Evidence Intelligence Platform API",
-    version="0.3.0",
+    version="0.4.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -28,7 +51,7 @@ app.include_router(api_router)
 def root():
     return {
         "application": "CEIP",
-        "version": "0.3.0",
+        "version": "0.4.0",
     }
 
 

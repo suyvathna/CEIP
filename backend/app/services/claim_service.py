@@ -5,6 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.constants.claim_status import ClaimResponseType, ClaimStatus
+from app.constants.contract_triggers import TriggerType
 from app.models.claim import Claim, ClaimDailyLog, ClaimEvent, ClaimEvidence, ClaimResponse
 from app.models.daily_log import DailyLog
 from app.models.evidence import Evidence
@@ -17,6 +18,7 @@ from app.schemas.claim import (
     EngineerLateNoticeFlagRequest,
     NoticeSubmitRequest,
 )
+from app.services import contract_engine, notification_service
 from app.services.claim_clock_service import config_from_project, get_claim_clock, get_today
 from app.services.claim_fact_service import get_claim_facts, get_fact_summary
 from app.services.event_requirements_service import get_event_requirements
@@ -119,6 +121,16 @@ def link_event(db: Session, claim_id: UUID, event_id: UUID) -> ClaimEvent:
 
     link = ClaimEvent(claim_id=claim_id, event_id=event_id)
     db.add(link)
+
+    # The Claim's own 20.2 clock now supersedes the event's, so the
+    # event's standing notice alerts are no longer the thing to act on.
+    notification_service.resolve_source(
+        db,
+        source_type="event",
+        source_id=event_id,
+        reason="Folded into a Claim - the claim's own clock now applies",
+    )
+
     db.commit()
     db.refresh(link)
     return link
@@ -378,6 +390,16 @@ def submit_notice(
     claim.notice_evidence_id = payload.notice_evidence_id
     claim.status = ClaimStatus.NOTIFIED.value
 
+    # The Sub-Clause 20.2.1 countdown is over. Retire its alert now
+    # rather than waiting for the next sweep.
+    notification_service.resolve_source(
+        db,
+        source_type="claim",
+        source_id=claim.id,
+        stage="notice",
+        reason="Notice of Claim submitted",
+    )
+
     db.commit()
     db.refresh(claim)
     return claim
@@ -447,6 +469,19 @@ def submit_detailed_claim(
     else:
         claim.status = ClaimStatus.AWAITING_ENGINEER_RESPONSE.value
 
+    db.flush()
+
+    # Engine B: 20.2.5 sends the claim straight to Sub-Clause 3.7, so
+    # the Determination record is opened now. It has to exist before the
+    # Engineer's determination arrives, or nothing is watching for the
+    # 28-day Notice of Dissatisfaction window that follows it.
+    contract_engine.dispatch(
+        db,
+        TriggerType.DETAILED_CLAIM_SUBMITTED,
+        claim_id=claim.id,
+        project_id=claim.project_id,
+    )
+
     db.commit()
     db.refresh(claim)
     return claim
@@ -488,6 +523,25 @@ def engineer_respond(
             payload.response_type, ClaimStatus.DETERMINED.value
         )
 
+    db.flush()
+
+    # Engine B: a substantive decision opens the Sub-Clause 3.7.5 Notice
+    # of Dissatisfaction window on the linked determination. Miss that
+    # window and the Engineer's decision is final and binding - there is
+    # no appeal from it, which makes this the most consequential alert
+    # the platform raises.
+    contract_engine.dispatch(
+        db,
+        TriggerType.ENGINEER_RESPONDED,
+        claim_id=claim.id,
+        project_id=claim.project_id,
+        response_type=payload.response_type,
+        response_date=payload.response_date,
+        days_granted=payload.days_granted,
+        cost_awarded_amount=payload.cost_awarded_amount,
+        comment=payload.comment,
+    )
+
     db.commit()
     db.refresh(claim)
     return claim
@@ -498,9 +552,14 @@ def mark_deemed_rejected_if_overdue(db: Session, claim: Claim) -> Claim:
     Sub-Clause 20.2.5: if the Engineer doesn't respond within the
     response period, that's treated as a rejection the claiming party can
     act on (escalate under Clause 21) rather than the claim disappearing
-    into silence. This is called from the clock endpoint rather than a
-    background job, since the platform has no scheduler - status is
-    brought up to date lazily whenever the claim is viewed.
+    into silence.
+
+    Engine B's daily sweep now applies this to every claim on the system
+    whether or not anyone opens it (see
+    contract_engine._sweep_claims) - previously a claim nobody looked at
+    could sit in AwaitingEngineerResponse indefinitely. This lazy call is
+    kept so the claim page reflects the change the instant it is opened,
+    rather than up to a day later.
     """
     if claim.status != ClaimStatus.AWAITING_ENGINEER_RESPONSE.value:
         return claim

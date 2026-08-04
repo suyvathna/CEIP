@@ -18,6 +18,23 @@ from app.models.programme_activity import (
     ActivityPredecessor,
     EventActivityImpact,
 )
-from app.models.claim import Claim, ClaimEvent, ClaimResponse
+from app.models.claim import (
+    Claim,
+    ClaimDailyLog,
+    ClaimEvent,
+    ClaimEvidence,
+    ClaimResponse,
+)
 from app.models.claim_fact import ClaimFact, ClaimFactEvidence
 from app.models.claim_access_token import ClaimAccessToken
+
+# Engine A - the "ALWAYS DO" compliance scheduler.
+from app.models.compliance_obligation import ComplianceObligation
+from app.models.compliance_run import ComplianceRun
+
+# Engine B - the "DO-IN-CASE" contractual state machine.
+from app.models.determination import Determination
+from app.models.variation import Variation
+
+# The shared alert stream both engines write into.
+from app.models.notification import Notification

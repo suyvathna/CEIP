@@ -43,6 +43,7 @@ import {
 } from "../api/claimFacts";
 import { getClaimDelayAnalysis } from "../api/programme";
 import { getPublicClaimReportPdfUrl } from "../api/claimAccess";
+import DeterminationPanel from "../components/DeterminationPanel";
 
 const STAGE_STATUS_COLOR = {
   met: "success",
@@ -991,6 +992,13 @@ function ClaimDetailPage() {
       <ClaimRequirementsPanel claimId={claimId} />
       <WorkflowActions claim={claim} claimId={claimId} onChanged={refreshAll} />
       <EngineerDeterminationPanel claimId={claimId} />
+      {/* Sub-Clause 3.7 and its 28-day Notice of Dissatisfaction window.
+          Renders nothing until a determination record exists - one opens
+          automatically when the fully detailed claim goes in, since
+          20.2.5 sends the claim straight to 3.7. Sits directly under the
+          Engineer's response history because that history is what
+          triggers the NOD clock. */}
+      <DeterminationPanel claimId={claimId} projectId={projectId} />
       <FactsRegister claimId={claimId} onChanged={refreshAll} />
       <DelayAnalysisPanel claimId={claimId} projectId={projectId} />
       <ShareReportPanel claimId={claimId} />

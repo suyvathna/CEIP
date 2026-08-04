@@ -8,12 +8,20 @@ import SummarizeIcon from "@mui/icons-material/Summarize";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import GavelIcon from "@mui/icons-material/Gavel";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
+import FactCheckIcon from "@mui/icons-material/FactCheck";
+import EditNoteIcon from "@mui/icons-material/EditNote";
+import BalanceIcon from "@mui/icons-material/Balance";
 
 /**
- * Shared tab strip for the project-scoped screens (overview, dashboard,
- * timeline, report, claims, programme). Each screen is its own route, so
- * navigation happens via plain router links rather than in-page tab
- * switching.
+ * Shared tab strip for the project-scoped screens. Each screen is its own
+ * route, so navigation happens via plain router links rather than in-page
+ * tab switching.
+ *
+ * Order follows the shape of the contract rather than the order the
+ * screens were built: what the calendar requires (Compliance), what the
+ * site recorded (Timeline), what is being claimed (Claims), what was
+ * instructed (Variations), and what the Engineer has decided
+ * (Determinations).
  */
 function ProjectNav({ projectId, active }) {
   return (
@@ -36,6 +44,14 @@ function ProjectNav({ projectId, active }) {
           to={`/projects/${projectId}/dashboard`}
         />
         <Tab
+          value="compliance"
+          label="Compliance"
+          icon={<FactCheckIcon fontSize="small" />}
+          iconPosition="start"
+          component={RouterLink}
+          to={`/projects/${projectId}/compliance`}
+        />
+        <Tab
           value="timeline"
           label="Timeline"
           icon={<TimelineIcon fontSize="small" />}
@@ -50,6 +66,22 @@ function ProjectNav({ projectId, active }) {
           iconPosition="start"
           component={RouterLink}
           to={`/projects/${projectId}/claims`}
+        />
+        <Tab
+          value="variations"
+          label="Variations"
+          icon={<EditNoteIcon fontSize="small" />}
+          iconPosition="start"
+          component={RouterLink}
+          to={`/projects/${projectId}/variations`}
+        />
+        <Tab
+          value="determinations"
+          label="Determinations"
+          icon={<BalanceIcon fontSize="small" />}
+          iconPosition="start"
+          component={RouterLink}
+          to={`/projects/${projectId}/determinations`}
         />
         <Tab
           value="programme"

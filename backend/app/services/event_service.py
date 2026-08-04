@@ -5,11 +5,13 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
+from app.constants.contract_triggers import TriggerType
 from app.models.daily_log import DailyLog, DailyLogEventLink
 from app.models.evidence import Evidence
 from app.models.event import Event
 from app.models.project import Project
 from app.schemas.event import EventCreate
+from app.services import contract_engine, notification_service
 from app.services.event_requirements_service import event_requirements_summary
 from app.services.notice_deadline_service import NOTICE_PERIOD_DAYS
 
@@ -100,6 +102,19 @@ def create_event_service(db: Session, event: EventCreate) -> Event:
 
     _auto_link_same_day_logs(db, db_event)
 
+    # Engine B: if this event type maps to a citable FIDIC claim ground,
+    # the Sub-Clause 20.2.1 clock is already running - whether or not
+    # anyone has decided to raise a Claim yet. That gap between logging
+    # an event and deciding to claim for it is where entitlements
+    # quietly die, so the alert goes out now rather than at the next
+    # daily sweep.
+    contract_engine.dispatch(
+        db,
+        TriggerType.EVENT_LOGGED,
+        event_id=db_event.id,
+        project_id=db_event.project_id,
+    )
+
     db.commit()
     db.refresh(db_event)
 
@@ -125,6 +140,13 @@ def mark_notice_given_service(db: Session, event_id: UUID, notice_given_date: da
         return None
 
     event.notice_given_date = notice_given_date
+
+    notification_service.resolve_source(
+        db,
+        source_type="event",
+        source_id=event.id,
+        reason="Notice of Claim recorded",
+    )
 
     db.commit()
     db.refresh(event)
