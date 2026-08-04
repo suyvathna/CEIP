@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link as RouterLink } from "react-router-dom";
 import Typography from "@mui/material/Typography";
@@ -9,152 +10,70 @@ import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
 import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
-import { getAllEvents } from "../api/events";
-import { getProjects } from "../api/projects";
-import { getProjectClaims, getClaimClock } from "../api/claims";
+import ToggleButton from "@mui/material/ToggleButton";
+import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
+import EngineChip from "../components/EngineChip";
+import EngineExplainer from "../components/EngineExplainer";
+import { ENGINE_A, ENGINE_B, ENGINE_SHORT_LABELS } from "../utils/engines";
+import { getDeadlineFeed } from "../api/compliance";
 
-const NOTICE_STATUS_LABELS = {
-  pending: "Notice period open",
-  overdue: "Notice deadline missed",
+/**
+ * Every live deadline across both engines, in one list, soonest first.
+ *
+ * This screen used to assemble itself client-side: fetch every project,
+ * then every claim in every project, then one more request per claim for
+ * its clock. On a contractor running eight jobs with forty claims that
+ * was roughly fifty sequential round trips to render one page - and it
+ * could still only ever see events and claims, because compliance
+ * obligations, Sub-Clause 3.7 determinations and Sub-Clause 3.5
+ * instructions had nowhere to appear. It is now one request to
+ * GET /compliance/deadlines, which computes and ranks the lot server-side.
+ */
+
+const SEVERITY_COLORS = {
+  Critical: "error",
+  Warning: "warning",
+  Info: "info",
 };
 
-function EventDeadlines({ projects }) {
-  const eventsQuery = useQuery({
-    queryKey: ["allEvents"],
-    queryFn: getAllEvents,
-  });
+const CATEGORY_LABELS = {
+  Compliance: "Compliance",
+  Claim: "Claim (20.2)",
+  Determination: "Determination (3.7)",
+  Variation: "Variation (13 / 3.5)",
+  Event: "Event notice",
+};
 
-  if (eventsQuery.isLoading) return <CircularProgress size={20} />;
-  if (eventsQuery.isError) return <Alert severity="error">{eventsQuery.error.message}</Alert>;
-
-  const projectNames = Object.fromEntries(projects.map((p) => [p.id, p.project_name]));
-
-  const needsAttention = eventsQuery.data
-    .filter((event) => event.notice_given_date === null)
-    .map((event) => ({ ...event, project_name: projectNames[event.project_id] || "Unknown project" }))
-    .sort((a, b) => a.notice_days_remaining - b.notice_days_remaining);
-
-  if (needsAttention.length === 0) {
-    return (
-      <Typography variant="body2" color="text.secondary">
-        Nothing needs notice action right now.
-      </Typography>
-    );
-  }
-
-  return (
-    <List disablePadding>
-      {needsAttention.map((event) => (
-        <ListItemButton
-          key={event.id}
-          component={RouterLink}
-          to={`/projects/${event.project_id}/events/${event.id}`}
-          divider
-        >
-          <ListItemText
-            primary={
-              <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-                <Chip
-                  size="small"
-                  color={event.notice_status === "overdue" ? "error" : "info"}
-                  label={NOTICE_STATUS_LABELS[event.notice_status]}
-                />
-                <Typography variant="body1" fontWeight={600}>
-                  {event.title}
-                </Typography>
-              </Stack>
-            }
-            secondary={`${event.project_name} — ${event.event_date} — deadline ${event.notice_deadline} — ${
-              event.notice_status === "overdue"
-                ? `${Math.abs(event.notice_days_remaining)} day(s) overdue`
-                : `${event.notice_days_remaining} day(s) left`
-            }`}
-          />
-        </ListItemButton>
-      ))}
-    </List>
-  );
-}
-
-function ClaimDeadlines({ projects }) {
-  const claimsQuery = useQuery({
-    queryKey: ["allClaimsForDeadlines", projects.map((p) => p.id)],
-    queryFn: async () => {
-      const perProject = await Promise.all(
-        projects.map(async (project) => {
-          const claims = await getProjectClaims(project.id);
-          const withClocks = await Promise.all(
-            claims.map(async (claim) => ({
-              claim,
-              project,
-              clock: await getClaimClock(claim.id),
-            }))
-          );
-          return withClocks;
-        })
-      );
-      return perProject.flat();
-    },
-    enabled: projects.length > 0,
-  });
-
-  if (claimsQuery.isLoading) return <CircularProgress size={20} />;
-  if (claimsQuery.isError) return <Alert severity="error">{claimsQuery.error.message}</Alert>;
-
-  const atRisk = (claimsQuery.data || [])
-    .filter((item) => item.clock.at_risk)
-    .sort((a, b) => (a.clock.days_remaining ?? 0) - (b.clock.days_remaining ?? 0));
-
-  if (atRisk.length === 0) {
-    return (
-      <Typography variant="body2" color="text.secondary">
-        No claims within 7 days of their next Sub-Clause 20.2 deadline right now.
-      </Typography>
-    );
-  }
-
-  return (
-    <List disablePadding>
-      {atRisk.map(({ claim, project, clock }) => (
-        <ListItemButton
-          key={claim.id}
-          component={RouterLink}
-          to={`/projects/${project.id}/claims/${claim.id}`}
-          divider
-        >
-          <ListItemText
-            primary={
-              <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-                <Chip
-                  size="small"
-                  color={clock.days_remaining < 0 ? "error" : "warning"}
-                  label={clock.next_action?.label}
-                />
-                <Typography variant="body1" fontWeight={600}>
-                  {claim.title}
-                </Typography>
-              </Stack>
-            }
-            secondary={`${project.project_name} — deadline ${clock.next_action?.deadline} — ${
-              clock.days_remaining < 0
-                ? `${Math.abs(clock.days_remaining)} day(s) overdue`
-                : `${clock.days_remaining} day(s) left`
-            }`}
-          />
-        </ListItemButton>
-      ))}
-    </List>
-  );
-}
+const WINDOWS = [
+  { value: 14, label: "Next 14 days" },
+  { value: 30, label: "Next 30 days" },
+  { value: 90, label: "Next 90 days" },
+  { value: "", label: "Everything open" },
+];
 
 function DeadlinesDashboardPage() {
-  const projectsQuery = useQuery({
-    queryKey: ["projects"],
-    queryFn: getProjects,
+  const [withinDays, setWithinDays] = useState(30);
+  const [category, setCategory] = useState("");
+  const [engine, setEngine] = useState("");
+
+  const feedQuery = useQuery({
+    queryKey: ["deadlineFeed", withinDays],
+    queryFn: () =>
+      getDeadlineFeed({
+        withinDays: withinDays === "" ? undefined : withinDays,
+      }),
   });
 
-  if (projectsQuery.isLoading) return <CircularProgress />;
-  if (projectsQuery.isError) return <Alert severity="error">{projectsQuery.error.message}</Alert>;
+  if (feedQuery.isLoading) return <CircularProgress />;
+  if (feedQuery.isError)
+    return <Alert severity="error">{feedQuery.error.message}</Alert>;
+
+  const feed = feedQuery.data;
+  const items = feed.items
+    .filter((item) => (category ? item.category === category : true))
+    .filter((item) => (engine ? item.engine === engine : true));
+
+  const categories = [...new Set(feed.items.map((item) => item.category))];
 
   return (
     <Stack spacing={3}>
@@ -162,19 +81,126 @@ function DeadlinesDashboardPage() {
         Deadlines
       </Typography>
 
-      <Paper sx={{ p: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Claims at risk (within 7 days, or overdue)
-        </Typography>
-        <ClaimDeadlines projects={projectsQuery.data} />
-      </Paper>
+      <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
+        <Chip label={`${feed.total} open`} />
+        <Chip color="error" label={`${feed.overdue} overdue`} />
+        <Chip color="error" variant="outlined" label={`${feed.critical} critical`} />
+        <Chip variant="outlined" label={`as at ${feed.generated_for}`} />
+      </Stack>
 
-      <Paper sx={{ p: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Event Notice Deadlines (Sub-Clause 20.2.1)
+      <EngineExplainer />
+
+      {/* Engine first, category second. Which loop a deadline came from
+          is the more useful cut: it separates "paperwork I owe" from
+          "a clock running against my entitlement". */}
+      <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1, alignItems: "center" }}>
+        <Typography variant="body2" color="text.secondary">
+          Engine:
         </Typography>
-        <EventDeadlines projects={projectsQuery.data} />
-      </Paper>
+        <Chip
+          label={`All (${feed.total})`}
+          color={engine === "" ? "primary" : "default"}
+          onClick={() => setEngine("")}
+        />
+        <Chip
+          label={`${ENGINE_SHORT_LABELS[ENGINE_A]} (${feed.engine_a ?? 0})`}
+          color={engine === ENGINE_A ? "primary" : "default"}
+          onClick={() => setEngine(ENGINE_A)}
+        />
+        <Chip
+          label={`${ENGINE_SHORT_LABELS[ENGINE_B]} (${feed.engine_b ?? 0})`}
+          color={engine === ENGINE_B ? "primary" : "default"}
+          onClick={() => setEngine(ENGINE_B)}
+        />
+      </Stack>
+
+      <ToggleButtonGroup
+        exclusive
+        size="small"
+        value={withinDays}
+        onChange={(e, value) => {
+          if (value !== null) setWithinDays(value);
+        }}
+      >
+        {WINDOWS.map((window) => (
+          <ToggleButton key={String(window.value)} value={window.value}>
+            {window.label}
+          </ToggleButton>
+        ))}
+      </ToggleButtonGroup>
+
+      <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
+        <Chip
+          label="All"
+          color={category === "" ? "primary" : "default"}
+          onClick={() => setCategory("")}
+        />
+        {categories.map((value) => (
+          <Chip
+            key={value}
+            label={CATEGORY_LABELS[value] || value}
+            color={category === value ? "primary" : "default"}
+            onClick={() => setCategory(value)}
+          />
+        ))}
+      </Stack>
+
+      {items.length === 0 ? (
+        <Paper sx={{ p: 3 }}>
+          <Typography color="text.secondary">
+            Nothing falls due in this window. Widen it, or check the
+            compliance register on an individual project.
+          </Typography>
+        </Paper>
+      ) : (
+        <Paper>
+          <List disablePadding>
+            {items.map((item) => (
+              <ListItemButton
+                key={`${item.source_type}-${item.source_id}-${item.stage}`}
+                component={RouterLink}
+                to={item.link_path}
+                divider
+              >
+                <ListItemText
+                  primary={
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      sx={{ alignItems: "center", flexWrap: "wrap" }}
+                    >
+                      <Chip
+                        size="small"
+                        color={SEVERITY_COLORS[item.severity] || "default"}
+                        label={
+                          item.days_remaining < 0
+                            ? `${Math.abs(item.days_remaining)}d overdue`
+                            : `${item.days_remaining}d left`
+                        }
+                      />
+                      <EngineChip engine={item.engine} />
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        label={CATEGORY_LABELS[item.category] || item.category}
+                      />
+                      {item.reference && (
+                        <Chip size="small" variant="outlined" label={item.reference} />
+                      )}
+                      <Typography variant="body1" fontWeight={600}>
+                        {item.title}
+                      </Typography>
+                    </Stack>
+                  }
+                  secondary={`${item.project_name} — ${item.stage_label} — due ${
+                    item.deadline
+                  }${item.clause_code ? ` — ${item.clause_code}` : ""}`}
+                />
+              </ListItemButton>
+            ))}
+          </List>
+        </Paper>
+      )}
     </Stack>
   );
 }

@@ -19,13 +19,13 @@ import { BASE_URL } from "../api/client";
 
 const ICONS = {
   Event: <EventNoteIcon fontSize="small" />,
-  "Daily Diary": <DescriptionIcon fontSize="small" />,
+  "Daily Log": <DescriptionIcon fontSize="small" />,
   Evidence: <AttachFileIcon fontSize="small" />,
 };
 
 function resultLink(result) {
   if (result.item_type === "Event") return `/events/${result.id}`;
-  if (result.item_type === "Daily Diary") return `/diaries/${result.id}`;
+  if (result.item_type === "Daily Log") return `/daily-logs/${result.id}`;
   return null;
 }
 
@@ -62,7 +62,7 @@ function SearchResultsPage() {
 
       {data && data.length === 0 && (
         <Typography color="text.secondary">
-          No events, diaries, or evidence matched that search.
+          No events, Daily Logs, or evidence matched that search.
         </Typography>
       )}
 

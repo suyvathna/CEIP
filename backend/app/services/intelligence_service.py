@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app.repositories.intelligence_repository import (
-    search_daily_diaries,
+    search_daily_logs,
     search_evidence,
     search_events,
 )
@@ -28,18 +28,18 @@ def intelligence_search(
             }
         )
 
-    diaries = search_daily_diaries(
+    daily_logs = search_daily_logs(
         db,
         keyword,
     )
 
-    for diary in diaries:
+    for daily_log in daily_logs:
         results.append(
             {
-                "id": diary.id,
-                "item_type": "Daily Diary",
-                "title": diary.work_completed or "Daily Diary",
-                "created_at": diary.created_at,
+                "id": daily_log.id,
+                "item_type": "Daily Log",
+                "title": daily_log.work_completed or "Daily Log",
+                "created_at": daily_log.created_at,
             }
         )
 

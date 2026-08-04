@@ -1,23 +1,12 @@
-import { apiRequest } from "./client";
+import { BASE_URL } from "./client";
 
-// These hit the /public/claims/{token} routes, which deliberately require
-// no authentication - this is the Engineer's no-account-needed path into
-// a single claim (see the magic-link access feature).
+// CEIP is Contractor-only - the Engineer never has an account or any
+// access to this app. The only thing a share link (created via
+// createClaimAccessLink in api/claims.js) can ever resolve to is a
+// read-only PDF served directly by the API, so this file just builds
+// that URL rather than calling any endpoint of its own. There is no
+// frontend page for the Engineer's side of this at all.
 
-export function getPublicClaimOverview(token) {
-  return apiRequest(`/public/claims/${token}`);
-}
-
-export function respondToPublicFact(token, factId, data) {
-  return apiRequest(`/public/claims/${token}/facts/${factId}`, {
-    method: "PATCH",
-    body: JSON.stringify(data),
-  });
-}
-
-export function submitPublicEngineerResponse(token, data) {
-  return apiRequest(`/public/claims/${token}/response`, {
-    method: "PATCH",
-    body: JSON.stringify(data),
-  });
+export function getPublicClaimReportPdfUrl(token) {
+  return `${BASE_URL}/public/claims/${token}/pdf`;
 }

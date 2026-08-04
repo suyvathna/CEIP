@@ -17,10 +17,41 @@ class Evidence(Base):
         default=uuid.uuid4,
     )
 
-    event_id: Mapped[uuid.UUID] = mapped_column(
+    # An attachment belongs to exactly one owner: an Event, a DailyLog
+    # directly (for the Daily Log's own Photos section - a delivery photo,
+    # an inspection photo, a general site photo), or a Correspondence
+    # record (the scanned letter/email itself). All three nullable -
+    # forcing every attachment through an Event was exactly the friction
+    # that made the future camera-API import awkward, and the same is true
+    # of a letter that predates any Event it might relate to. Enforced as
+    # "exactly one of the three" in the service layer.
+    event_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("events.id"),
+        nullable=True,
     )
+
+    daily_log_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("daily_logs.id"),
+        nullable=True,
+    )
+
+    correspondence_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("correspondence.id"),
+        nullable=True,
+    )
+
+    # Which Daily Log section this photo documents (see PhotoCategory).
+    # Nullable/free text rather than a hard enum column so a camera-API
+    # import that can't confidently classify a photo can still land it as
+    # "General" instead of failing the upload.
+    category: Mapped[str | None] = mapped_column(String(50))
+
+    # Short human caption, matching the template's per-photo caption line
+    # (e.g. "V6 props (support) installation").
+    caption: Mapped[str | None] = mapped_column(String(255))
 
     filename: Mapped[str] = mapped_column(String(255))
 

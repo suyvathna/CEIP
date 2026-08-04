@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models.daily_diary import DailyDiary
+from app.models.daily_log import DailyLog
 from app.models.event import Event
 from app.models.evidence import Evidence
 from app.models.project import Project
@@ -55,72 +55,42 @@ def _get_project_event_counts(db: Session, project_id: UUID) -> dict:
         )
     )
 
-    # Diaries are project-owned directly now (see DailyDiary.project_id) -
-    # counting through a join on event_id would silently undercount any
-    # diary entry that isn't tied to a single primary event.
-    total_daily_diaries = db.scalar(
-        select(func.count(DailyDiary.id)).where(DailyDiary.project_id == project_id)
+    # Logs are project-owned directly (see DailyLog.project_id) - counting
+    # through a join on event_id would silently undercount any log entry
+    # that isn't tied to a single primary event.
+    total_daily_logs = db.scalar(
+        select(func.count(DailyLog.id)).where(DailyLog.project_id == project_id)
     )
 
-    total_evidence = db.scalar(
+    # Evidence for a project now comes from two owners: attached to an
+    # Event in the project, or attached directly to a Daily Log's Photos
+    # section (which has no Event at all for most photos - deliveries,
+    # HSE findings, general progress shots). Both need counting, or this
+    # figure would quietly undercount every photo logged straight to a
+    # Daily Log.
+    event_linked_evidence = db.scalar(
         select(func.count(Evidence.id))
         .join(Event, Event.id == Evidence.event_id)
         .where(Event.project_id == project_id)
-    )
+    ) or 0
+
+    daily_log_linked_evidence = db.scalar(
+        select(func.count(Evidence.id))
+        .join(DailyLog, DailyLog.id == Evidence.daily_log_id)
+        .where(DailyLog.project_id == project_id)
+    ) or 0
+
+    total_evidence = event_linked_evidence + daily_log_linked_evidence
 
     return {
         "total_events": total_events or 0,
-        "total_daily_diaries": total_daily_diaries or 0,
+        "total_daily_logs": total_daily_logs or 0,
         "total_evidence": total_evidence or 0,
         "open_events": open_events or 0,
         "closed_events": closed_events or 0,
         "high_events": high_events or 0,
         "medium_events": medium_events or 0,
         "low_events": low_events or 0,
-    }
-
-
-def get_dashboard_service(db: Session, project_id: UUID):
-    project = db.get(Project, project_id)
-
-    if project is None:
-        return None
-
-    counts = _get_project_event_counts(db, project_id)
-
-    event_type_statistics = db.execute(
-        select(
-            Event.event_type.label("event_type"),
-            func.count(Event.id).label("total"),
-        )
-        .where(Event.project_id == project_id)
-        .group_by(Event.event_type)
-        .order_by(Event.event_type)
-    ).all()
-
-    recent_events = db.scalars(
-        select(Event)
-        .where(Event.project_id == project_id)
-        .order_by(Event.created_at.desc())
-        .limit(5)
-    ).all()
-
-    return {
-        "project_id": project.id,
-        "project_name": project.project_name,
-        "total_events": counts["total_events"],
-        "total_daily_diaries": counts["total_daily_diaries"],
-        "total_evidence": counts["total_evidence"],
-        "open_events": counts["open_events"],
-        "closed_events": counts["closed_events"],
-        "high_severity_events": counts["high_events"],
-        "medium_severity_events": counts["medium_events"],
-        "low_severity_events": counts["low_events"],
-        "event_type_statistics": [
-            {"event_type": row.event_type, "total": row.total}
-            for row in event_type_statistics
-        ],
-        "recent_events": recent_events or [],
     }
 
 
@@ -145,7 +115,7 @@ def get_project_report_service(db: Session, project_id: UUID):
         "project_id": project.id,
         "project_name": project.project_name,
         "total_events": counts["total_events"],
-        "total_daily_diaries": counts["total_daily_diaries"],
+        "total_daily_logs": counts["total_daily_logs"],
         "total_evidence": counts["total_evidence"],
         "open_events": counts["open_events"],
         "closed_events": counts["closed_events"],

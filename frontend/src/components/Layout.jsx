@@ -12,6 +12,7 @@ import Stack from "@mui/material/Stack";
 import SearchIcon from "@mui/icons-material/Search";
 import LogoutIcon from "@mui/icons-material/Logout";
 import ScheduleIcon from "@mui/icons-material/Schedule";
+import NotificationBell from "./NotificationBell";
 import { useAuth } from "../context/AuthContext";
 
 function Layout() {
@@ -84,6 +85,13 @@ function Layout() {
               />
             </Box>
           )}
+
+          {/* Both engines write into one alert stream and this is the
+              only place it surfaces globally - the bell turns red the
+              moment anything rights-destroying (a Sub-Clause 20.2 notice
+              period, a 3.7.5 NOD window, a 3.5 instruction notice) is
+              inside its alert window. */}
+          {loggedIn && <NotificationBell />}
 
           {loggedIn ? (
             <Button

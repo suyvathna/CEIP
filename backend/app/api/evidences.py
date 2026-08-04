@@ -40,14 +40,32 @@ router = APIRouter(
 
 @router.post("/upload", response_model=EvidenceResponse)
 def upload_evidence(
-    event_id: UUID = Form(...),
+    event_id: UUID | None = Form(None),
+    daily_log_id: UUID | None = Form(None),
+    correspondence_id: UUID | None = Form(None),
+    category: str | None = Form(None),
+    caption: str | None = Form(None),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
+    # An attachment needs exactly one owner. Most Daily Log photos (a
+    # delivery, an HSE finding, general progress) have no corresponding
+    # Event at all, which is exactly why event_id can no longer be
+    # required here - but the upload still has to land somewhere.
+    if not event_id and not daily_log_id and not correspondence_id:
+        raise HTTPException(
+            status_code=422,
+            detail="Provide one of event_id, daily_log_id or correspondence_id.",
+        )
+
     uploaded = upload_file(file)
 
     evidence = Evidence(
         event_id=event_id,
+        daily_log_id=daily_log_id,
+        correspondence_id=correspondence_id,
+        category=category,
+        caption=caption,
         filename=uploaded["filename"],
         object_name=uploaded["object_name"],
         content_type=uploaded["content_type"],
@@ -70,12 +88,16 @@ def read_evidences(
 def search_evidences(
     filename: str | None = None,
     event_id: UUID | None = None,
+    daily_log_id: UUID | None = None,
+    correspondence_id: UUID | None = None,
     db: Session = Depends(get_db),
 ):
     return search_evidence(
         db=db,
         filename=filename,
         event_id=event_id,
+        daily_log_id=daily_log_id,
+        correspondence_id=correspondence_id,
     )
 
 

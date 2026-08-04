@@ -17,6 +17,11 @@ from app.services.notice_deadline_service import (
 
 class EventCreate(BaseModel):
     project_id: UUID
+    # Left blank on the New Event form for the common case (auto-generated
+    # "EVT-001" style, see event_service._next_event_no); editable so a
+    # Contractor can tie it to their own correspondence/RFI numbering
+    # instead, the same convention Claim.claim_no already follows.
+    event_no: str | None = None
     title: str
     description: str | None = None
     event_date: date
@@ -30,9 +35,30 @@ class NoticeGivenRequest(BaseModel):
     notice_given_date: date
 
 
+class RequiredRecordItem(BaseModel):
+    kind: str
+    label: str
+    satisfied: bool
+    detail: str
+
+
+class ClauseReferenceOut(BaseModel):
+    clause_code: str
+    clause_title: str
+    basis: str
+    summary: str
+
+
+class EventRequirementsOut(BaseModel):
+    checklist: list[RequiredRecordItem]
+    all_satisfied: bool
+    clause_reference: ClauseReferenceOut | None
+
+
 class EventResponse(BaseModel):
     id: UUID
     project_id: UUID
+    event_no: str | None
     title: str
     description: str | None
     event_date: date

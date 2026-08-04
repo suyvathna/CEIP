@@ -23,6 +23,12 @@ class Event(Base):
         nullable=False,
     )
 
+    # "EVT-001" style, auto-generated sequentially per project (mirrors
+    # Claim.claim_no/_next_claim_no) so every Event has a short reference
+    # a Contractor can cite in correspondence and a Claim's linked-events
+    # list can show, instead of only a UUID.
+    event_no: Mapped[str | None] = mapped_column(String(50))
+
     title: Mapped[str] = mapped_column(
         String(200),
         nullable=False,

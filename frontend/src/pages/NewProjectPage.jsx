@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { createProject } from "../api/projects";
+import { createProject, updateProjectMilestones } from "../api/projects";
+
+const CURRENCIES = ["USD", "KHR", "THB", "EUR"];
 
 const initialFormState = {
   project_code: "",
@@ -9,10 +11,19 @@ const initialFormState = {
   contractor_name: "",
   engineer_name: "",
   contract_type: "",
-  country: "",
+  contract_no: "",
+  site_address: "",
+  country: "Cambodia",
   city: "",
   planned_start: "",
-  planned_finish: "",
+  duration_days: "",
+  // Not sent as part of ProjectCreate - see handleSubmit. Kept separate
+  // on purpose so an edit to the project later (which reuses the create
+  // schema) can never accidentally blank a milestone that isn't on that
+  // form (see ProjectMilestonesUpdate's docstring in schemas/project.py).
+  letter_of_acceptance_date: "",
+  currency: "USD",
+  contract_value: "",
   // FIDIC 2017 Sub-Clause 20.2 default periods (days). These are
   // contract defaults, not fixed law - Particular Conditions (and the
   // MDB Harmonised Edition common on ADB/World Bank-funded work in
@@ -23,6 +34,19 @@ const initialFormState = {
   engineer_late_notice_flag_days: 14,
   engineer_response_period_days: 42,
 };
+
+// Local preview only - the authoritative completion date is always
+// computed server-side from planned_start + duration_days (see
+// project_service.py), this just shows the PM what to expect before
+// they submit.
+function previewCompletionDate(startDate, durationDays) {
+  if (!startDate || !durationDays) return null;
+  const start = new Date(`${startDate}T00:00:00`);
+  if (Number.isNaN(start.getTime())) return null;
+  const finish = new Date(start);
+  finish.setDate(finish.getDate() + Number(durationDays));
+  return finish.toISOString().slice(0, 10);
+}
 
 function NewProjectPage() {
   const [formData, setFormData] = useState(initialFormState);
@@ -39,19 +63,38 @@ function NewProjectPage() {
     setSubmitting(true);
     setError(null);
     try {
+      // letter_of_acceptance_date is deliberately NOT part of
+      // ProjectCreate (see the field's comment above) - it goes through
+      // the same milestones PATCH the Compliance tab uses, as a second
+      // call right after creation, so this form's only job is to save
+      // the PM a trip back to Compliance to set it.
+      const { letter_of_acceptance_date, ...projectFields } = formData;
+
       const newProject = await createProject({
-        ...formData,
+        ...projectFields,
+        duration_days: Number(formData.duration_days) || 0,
+        contract_value: formData.contract_value === "" ? null : Number(formData.contract_value),
         notice_period_days: Number(formData.notice_period_days),
         detailed_claim_period_days: Number(formData.detailed_claim_period_days),
         engineer_late_notice_flag_days: Number(formData.engineer_late_notice_flag_days),
         engineer_response_period_days: Number(formData.engineer_response_period_days),
       });
+
+      if (letter_of_acceptance_date) {
+        await updateProjectMilestones(newProject.id, { letter_of_acceptance_date });
+      }
+
       navigate(`/projects/${newProject.id}`);
     } catch (err) {
       setError(err.message);
       setSubmitting(false);
     }
   }
+
+  const completionPreview = previewCompletionDate(
+    formData.planned_start,
+    formData.duration_days
+  );
 
   return (
     <div className="new-project-page legacy-page">
@@ -65,6 +108,15 @@ function NewProjectPage() {
         <label>
           Project name
           <input name="project_name" value={formData.project_name} onChange={handleChange} required />
+        </label>
+        <label>
+          Contract No.
+          <input
+            name="contract_no"
+            value={formData.contract_no}
+            onChange={handleChange}
+            placeholder="e.g. CT-2026-045"
+          />
         </label>
         <label>
           Client name
@@ -83,6 +135,15 @@ function NewProjectPage() {
           <input name="contract_type" value={formData.contract_type} onChange={handleChange} required />
         </label>
         <label>
+          Site address
+          <input
+            name="site_address"
+            value={formData.site_address}
+            onChange={handleChange}
+            placeholder="Street, Sangkat/Commune, Khan/District, Province"
+          />
+        </label>
+        <label>
           Country
           <input name="country" value={formData.country} onChange={handleChange} required />
         </label>
@@ -91,12 +152,56 @@ function NewProjectPage() {
           <input name="city" value={formData.city} onChange={handleChange} required />
         </label>
         <label>
-          Planned start
+          Commencement date
           <input type="date" name="planned_start" value={formData.planned_start} onChange={handleChange} required />
         </label>
         <label>
-          Planned finish
-          <input type="date" name="planned_finish" value={formData.planned_finish} onChange={handleChange} required />
+          Letter of Acceptance date (if already issued)
+          <input
+            type="date"
+            name="letter_of_acceptance_date"
+            value={formData.letter_of_acceptance_date}
+            onChange={handleChange}
+          />
+        </label>
+        <p className="form-hint">
+          Letter of Acceptance starts the 28-day Performance Security
+          (4.2) and Advance Payment guarantee (14.2) clocks. Leave blank
+          if not yet issued — set it later from the Compliance tab.
+        </p>
+        <label>
+          Time for Completion (days)
+          <input
+            type="number"
+            min="1"
+            name="duration_days"
+            value={formData.duration_days}
+            onChange={handleChange}
+            required
+          />
+        </label>
+        {completionPreview && (
+          <p className="form-hint">Completion date: {completionPreview}</p>
+        )}
+        <label>
+          Currency
+          <select name="currency" value={formData.currency} onChange={handleChange}>
+            {CURRENCIES.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Contract value
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            name="contract_value"
+            value={formData.contract_value}
+            onChange={handleChange}
+            placeholder="e.g. 2500000"
+          />
         </label>
 
         <fieldset>

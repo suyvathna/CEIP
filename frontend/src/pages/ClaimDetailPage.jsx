@@ -18,15 +18,22 @@ import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import DownloadIcon from "@mui/icons-material/Download";
 import {
   getClaim,
   getClaimClock,
   getClaimEvents,
+  getClaimDailyLogs,
+  getClaimEvidenceList,
+  getClaimRequirements,
+  getEngineerDetermination,
   submitClaimNotice,
   flagClaimLateNotice,
   submitDetailedClaim,
   submitEngineerResponse,
   createClaimAccessLink,
+  downloadClaimReportPdf,
+  getClaimClauseOptions,
 } from "../api/claims";
 import {
   getClaimFacts,
@@ -34,7 +41,8 @@ import {
   createClaimFact,
   respondToFact,
 } from "../api/claimFacts";
-import { getClaimDelayAnalysis } from "../api/programme";
+import { getPublicClaimReportPdfUrl } from "../api/claimAccess";
+import DeterminationPanel from "../components/DeterminationPanel";
 
 const STAGE_STATUS_COLOR = {
   met: "success",
@@ -94,6 +102,132 @@ function ClockPanel({ claimId }) {
   );
 }
 
+function ClaimRequirementsPanel({ claimId }) {
+  const requirementsQuery = useQuery({
+    queryKey: ["claimRequirements", claimId],
+    queryFn: () => getClaimRequirements(claimId),
+  });
+
+  if (requirementsQuery.isLoading) return <CircularProgress size={20} />;
+  if (requirementsQuery.isError) return null;
+
+  const requirements = requirementsQuery.data;
+
+  // No linked event carries a FIDIC-driven records checklist (e.g. a
+  // purely operational event type, or no events linked yet) - nothing
+  // useful to show, so skip the panel entirely rather than show an
+  // empty "all satisfied" box that would be misleading.
+  if (!requirements || requirements.events.length === 0) return null;
+
+  return (
+    <Paper sx={{ p: 3 }}>
+      <Typography variant="h6" gutterBottom>
+        Claim Readiness
+      </Typography>
+      {!requirements.all_satisfied && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {requirements.missing_count} required record(s) still missing across
+          this claim's linked events. The fully detailed claim (Step 2 below)
+          can't be submitted until these are attached.
+        </Alert>
+      )}
+      {requirements.all_satisfied && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          All required records are attached for every linked event.
+        </Alert>
+      )}
+      <Stack spacing={2}>
+        {requirements.events.map((event) => (
+          <div key={event.event_id}>
+            <Typography variant="subtitle2">
+              {event.event_no ? `${event.event_no} — ` : ""}
+              {event.title}
+            </Typography>
+            <List dense disablePadding>
+              {event.checklist.map((item) => (
+                <ListItem key={item.kind} disableGutters>
+                  <ListItemText
+                    primary={`${item.satisfied ? "✓" : "✗"} ${item.label}`}
+                    secondary={item.detail}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </div>
+        ))}
+      </Stack>
+    </Paper>
+  );
+}
+
+function EngineerDeterminationPanel({ claimId }) {
+  const determinationQuery = useQuery({
+    queryKey: ["claimEngineerDetermination", claimId],
+    queryFn: () => getEngineerDetermination(claimId),
+  });
+
+  return (
+    <Paper sx={{ p: 3 }}>
+      <Typography variant="h6" gutterBottom>
+        Engineer's Determination
+      </Typography>
+      {determinationQuery.isLoading && <CircularProgress size={20} />}
+      {!determinationQuery.isLoading && !determinationQuery.data && (
+        <Typography variant="body2" color="text.secondary">
+          No Engineer decision recorded yet.
+        </Typography>
+      )}
+      {determinationQuery.data && (
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 6, sm: 3 }}>
+            <Typography variant="caption" color="text.secondary">
+              Response type
+            </Typography>
+            <Typography variant="body1">{determinationQuery.data.response_type}</Typography>
+          </Grid>
+          <Grid size={{ xs: 6, sm: 3 }}>
+            <Typography variant="caption" color="text.secondary">
+              Response date
+            </Typography>
+            <Typography variant="body1">{determinationQuery.data.response_date}</Typography>
+          </Grid>
+          <Grid size={{ xs: 6, sm: 3 }}>
+            <Typography variant="caption" color="text.secondary">
+              EOT awarded (days)
+            </Typography>
+            <Typography variant="body1">
+              {determinationQuery.data.eot_awarded_days ?? "—"}
+            </Typography>
+          </Grid>
+          <Grid size={{ xs: 6, sm: 3 }}>
+            <Typography variant="caption" color="text.secondary">
+              Cost awarded
+            </Typography>
+            <Typography variant="body1">
+              {determinationQuery.data.cost_awarded_amount ?? "—"}
+            </Typography>
+          </Grid>
+          {determinationQuery.data.comment && (
+            <Grid size={12}>
+              <Typography variant="caption" color="text.secondary">
+                Engineer's comment
+              </Typography>
+              <Typography variant="body2">{determinationQuery.data.comment}</Typography>
+            </Grid>
+          )}
+          {determinationQuery.data.responded_by && (
+            <Grid size={12}>
+              <Typography variant="caption" color="text.secondary">
+                Responded by: {determinationQuery.data.responded_by}
+              </Typography>
+            </Grid>
+          )}
+        </Grid>
+      )}
+    </Paper>
+  );
+}
+
 function WorkflowActions({ claim, claimId, onChanged }) {
   const { enqueueSnackbar } = useSnackbar();
   const [noticeDate, setNoticeDate] = useState("");
@@ -103,6 +237,7 @@ function WorkflowActions({ claim, claimId, onChanged }) {
   const [responseType, setResponseType] = useState("Agreement");
   const [responseDate, setResponseDate] = useState("");
   const [daysGranted, setDaysGranted] = useState("");
+  const [costAwarded, setCostAwarded] = useState("");
   const [responseComment, setResponseComment] = useState("");
   const [respondedBy, setRespondedBy] = useState("");
   const [flagDate, setFlagDate] = useState("");
@@ -147,6 +282,7 @@ function WorkflowActions({ claim, claimId, onChanged }) {
         response_type: responseType,
         response_date: responseDate,
         days_granted: daysGranted === "" ? null : Number(daysGranted),
+        cost_awarded_amount: costAwarded === "" ? null : Number(costAwarded),
         comment: responseComment || null,
         responded_by: respondedBy || null,
       }),
@@ -300,6 +436,13 @@ function WorkflowActions({ claim, claimId, onChanged }) {
               label="Days granted (if applicable)"
               value={daysGranted}
               onChange={(e) => setDaysGranted(e.target.value)}
+            />
+            <TextField
+              type="number"
+              size="small"
+              label="Cost awarded (if applicable)"
+              value={costAwarded}
+              onChange={(e) => setCostAwarded(e.target.value)}
             />
             <TextField
               size="small"
@@ -515,125 +658,76 @@ function FactsRegister({ claimId, onChanged }) {
   );
 }
 
-function DelayAnalysisPanel({ claimId, projectId }) {
-  const analysisQuery = useQuery({
-    queryKey: ["claimDelayAnalysis", claimId],
-    queryFn: () => getClaimDelayAnalysis(claimId, projectId),
-    retry: false,
-  });
-
-  return (
-    <Paper sx={{ p: 3 }}>
-      <Typography variant="h6" gutterBottom>
-        Delay Analysis (Programme-based)
-      </Typography>
-      {analysisQuery.isLoading && <CircularProgress size={20} />}
-      {analysisQuery.isError && (
-        <Typography variant="body2" color="text.secondary">
-          No programme activities recorded for this project yet. Add
-          activities and link event impacts on the Programme tab to get a
-          critical-path day-count for this claim.
-        </Typography>
-      )}
-      {analysisQuery.data && (
-        <Stack spacing={1}>
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 6, sm: 3 }}>
-              <Typography variant="caption" color="text.secondary">
-                Contractor's ask
-              </Typography>
-              <Typography variant="h5">
-                {analysisQuery.data.claimed_days ?? "—"}
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 6, sm: 3 }}>
-              <Typography variant="caption" color="text.secondary">
-                Fact-register agreed
-              </Typography>
-              <Typography variant="h5">
-                {analysisQuery.data.fact_register_agreed_days ?? "—"}
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 6, sm: 3 }}>
-              <Typography variant="caption" color="text.secondary">
-                CPM critical delay
-              </Typography>
-              <Typography variant="h5">
-                {analysisQuery.data.gross_critical_delay_days}
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 6, sm: 3 }}>
-              <Typography variant="caption" color="text.secondary">
-                Absorbed by float
-              </Typography>
-              <Typography variant="h5">
-                {analysisQuery.data.float_absorbed_days}
-              </Typography>
-            </Grid>
-          </Grid>
-          <Typography variant="body2" color="text.secondary">
-            Baseline finish {analysisQuery.data.baseline_project_finish} →
-            with this claim's impacts applied,{" "}
-            {analysisQuery.data.claim_impacted_project_finish}.
-          </Typography>
-          {analysisQuery.data.overlapping_contractor_risk_events.length > 0 && (
-            <Alert severity="info">
-              {analysisQuery.data.overlapping_contractor_risk_events.length}{" "}
-              concurrent Contractor-Risk event(s) overlap this claim's
-              affected activities. Per the SCL Protocol these don't reduce
-              this claim's entitlement on their own - review with the
-              Engineer:{" "}
-              {analysisQuery.data.overlapping_contractor_risk_events
-                .map((e) => e.event_title)
-                .join(", ")}
-            </Alert>
-          )}
-          <Typography variant="caption" color="text.secondary">
-            {analysisQuery.data.note}
-          </Typography>
-        </Stack>
-      )}
-    </Paper>
-  );
-}
-
-function AccessLinkPanel({ claimId }) {
+function ShareReportPanel({ claimId }) {
   const { enqueueSnackbar } = useSnackbar();
   const [email, setEmail] = useState("");
   const [link, setLink] = useState(null);
+  const [downloading, setDownloading] = useState(false);
 
-  const mutation = useMutation({
-    mutationFn: () => createClaimAccessLink(claimId, email),
+  const linkMutation = useMutation({
+    // recipient_email is optional server-side (see
+    // ClaimAccessTokenCreate) - it's only kept for the Contractor's own
+    // record, so an empty field should never block the link itself from
+    // being generated.
+    mutationFn: () => createClaimAccessLink(claimId, email || null),
     onSuccess: (token) => {
-      const url = `${window.location.origin}/review/${token.token}`;
-      setLink(url);
+      setLink(getPublicClaimReportPdfUrl(token.token));
+      enqueueSnackbar("Share link generated", { variant: "success" });
     },
     onError: (err) => enqueueSnackbar(err.message, { variant: "error" }),
   });
 
+  async function handleDownload() {
+    setDownloading(true);
+    try {
+      await downloadClaimReportPdf(claimId);
+    } catch (err) {
+      enqueueSnackbar(err.message, { variant: "error" });
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <Paper sx={{ p: 3 }}>
       <Typography variant="h6" gutterBottom>
-        Engineer Access Link
+        Share with the Engineer
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Generates a link the Engineer can open without creating an
-        account, to review this claim's facts and evidence and respond.
-        Send it to them directly - there's no automatic email dispatch.
+        CEIP is Contractor-only - the Engineer never logs in or gets an
+        account. Download a read-only PDF of this claim to send yourself,
+        or generate a link that opens straight to that same PDF. Either
+        way, the only thing they can ever reach is the document itself.
+      </Typography>
+
+      <Button
+        variant="contained"
+        size="small"
+        startIcon={<DownloadIcon fontSize="small" />}
+        disabled={downloading}
+        onClick={handleDownload}
+      >
+        {downloading ? "Preparing PDF..." : "Download claim report (PDF)"}
+      </Button>
+
+      <Divider sx={{ my: 2 }} />
+
+      <Typography variant="subtitle2" gutterBottom>
+        Or generate a share link
       </Typography>
       <Stack direction="row" spacing={1}>
         <TextField
           size="small"
-          label="Engineer's email"
+          label="Engineer's email (optional, for your own record)"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
         <Button
           variant="outlined"
-          disabled={!email || mutation.isPending}
-          onClick={() => mutation.mutate()}
+          disabled={linkMutation.isPending}
+          onClick={() => linkMutation.mutate()}
         >
-          Generate link
+          {linkMutation.isPending ? "Generating..." : "Generate link"}
         </Button>
       </Stack>
       {link && (
@@ -671,11 +765,28 @@ function ClaimDetailPage() {
     queryFn: () => getClaimEvents(claimId),
   });
 
+  const dailyLogsQuery = useQuery({
+    queryKey: ["claimDailyLogs", claimId],
+    queryFn: () => getClaimDailyLogs(claimId),
+  });
+
+  const evidenceQuery = useQuery({
+    queryKey: ["claimEvidenceList", claimId],
+    queryFn: () => getClaimEvidenceList(claimId),
+  });
+
+  const clauseOptionsQuery = useQuery({
+    queryKey: ["claimClauseOptions"],
+    queryFn: getClaimClauseOptions,
+  });
+
   function refreshAll() {
     queryClient.invalidateQueries({ queryKey: ["claim", claimId] });
     queryClient.invalidateQueries({ queryKey: ["claimClock", claimId] });
     queryClient.invalidateQueries({ queryKey: ["claimFacts", claimId] });
     queryClient.invalidateQueries({ queryKey: ["claimFactSummary", claimId] });
+    queryClient.invalidateQueries({ queryKey: ["claimRequirements", claimId] });
+    queryClient.invalidateQueries({ queryKey: ["claimEngineerDetermination", claimId] });
     queryClient.invalidateQueries({ queryKey: ["claims", projectId] });
   }
 
@@ -697,12 +808,36 @@ function ClaimDetailPage() {
       </Button>
 
       <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
+        {claim.claim_no && (
+          <Chip color="primary" variant="outlined" label={claim.claim_no} />
+        )}
         <Typography variant="h4" fontWeight={700}>
           {claim.title}
         </Typography>
         <Chip label={claim.status} />
         <Chip variant="outlined" label={claim.claim_type} />
       </Stack>
+
+      {claim.governing_clause && (
+        <Typography variant="body2" color="text.secondary">
+          Governing clause: {claim.governing_clause}
+        </Typography>
+      )}
+
+      {claim.claim_basis &&
+        (() => {
+          const option = clauseOptionsQuery.data?.options?.find(
+            (o) => o.event_type === claim.claim_basis
+          );
+          if (!option) return null;
+          return (
+            <Alert severity="info">
+              Entitlement: {option.basis}
+              <br />
+              {option.summary}
+            </Alert>
+          );
+        })()}
 
       {claim.description && (
         <Typography variant="body1" color="text.secondary">
@@ -719,7 +854,7 @@ function ClaimDetailPage() {
             {eventsQuery.data.map((event) => (
               <ListItem key={event.id} disableGutters>
                 <ListItemText
-                  primary={`${event.event_date} — ${event.title}`}
+                  primary={`${event.event_no ? `${event.event_no} — ` : ""}${event.event_date} — ${event.title}`}
                   secondary={event.event_type}
                 />
               </ListItem>
@@ -730,13 +865,59 @@ function ClaimDetailPage() {
             No events linked.
           </Typography>
         )}
+
+        <Divider sx={{ my: 2 }} />
+
+        <Typography variant="subtitle2" gutterBottom>
+          Linked Daily Log entries
+        </Typography>
+        {dailyLogsQuery.data?.length ? (
+          <List dense disablePadding>
+            {dailyLogsQuery.data.map((log) => (
+              <ListItem key={log.id} disableGutters>
+                <ListItemText primary={log.diary_date} />
+              </ListItem>
+            ))}
+          </List>
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            No Daily Log entries linked.
+          </Typography>
+        )}
+
+        <Divider sx={{ my: 2 }} />
+
+        <Typography variant="subtitle2" gutterBottom>
+          Linked evidence
+        </Typography>
+        {evidenceQuery.data?.length ? (
+          <List dense disablePadding>
+            {evidenceQuery.data.map((item) => (
+              <ListItem key={item.id} disableGutters>
+                <ListItemText primary={item.filename || item.caption || `File ${item.id}`} />
+              </ListItem>
+            ))}
+          </List>
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            No evidence linked.
+          </Typography>
+        )}
       </Paper>
 
       <ClockPanel claimId={claimId} />
+      <ClaimRequirementsPanel claimId={claimId} />
       <WorkflowActions claim={claim} claimId={claimId} onChanged={refreshAll} />
+      <EngineerDeterminationPanel claimId={claimId} />
+      {/* Sub-Clause 3.7 and its 28-day Notice of Dissatisfaction window.
+          Renders nothing until a determination record exists - one opens
+          automatically when the fully detailed claim goes in, since
+          20.2.5 sends the claim straight to 3.7. Sits directly under the
+          Engineer's response history because that history is what
+          triggers the NOD clock. */}
+      <DeterminationPanel claimId={claimId} projectId={projectId} />
       <FactsRegister claimId={claimId} onChanged={refreshAll} />
-      <DelayAnalysisPanel claimId={claimId} projectId={projectId} />
-      <AccessLinkPanel claimId={claimId} />
+      <ShareReportPanel claimId={claimId} />
     </Stack>
   );
 }

@@ -1,32 +1,21 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models.project import Project
-from app.schemas.claim_access import (
-    ClaimAccessTokenCreate,
-    ClaimAccessTokenOut,
-    PublicEngineerDecisionRequest,
-    PublicFactResponseRequest,
-)
-from app.schemas.claim_fact import ClaimFactRespond
+from app.schemas.claim_access import ClaimAccessTokenCreate, ClaimAccessTokenOut
 from app.services.claim_access_service import create_access_token, resolve_access_token
-from app.services.claim_clock_service import config_from_project, get_claim_clock
-from app.services.claim_fact_service import get_claim_facts, get_fact_summary, respond_to_fact
-from app.services.claim_service import (
-    engineer_respond,
-    get_claim,
-    get_claim_events,
-    get_claim_responses,
-)
-from app.services.event_service import attach_notice_periods
-from app.schemas.claim import ClaimOut, ClaimResponseOut, EngineerDecisionRequest
-from app.schemas.claim_fact import ClaimFactOut, ClaimFactSummaryOut
-from app.schemas.event import EventResponse
+from app.services.claim_service import get_claim, get_claim_report_data
+from app.services.pdf_service import generate_claim_report_pdf
 
 router = APIRouter(prefix="/claims", tags=["Claim Access Links"])
+# Deliberately outside the authenticated app entirely, and with no JSON
+# endpoint of any kind - CEIP is Contractor-only, and this router is the
+# ENTIRE surface an Engineer (or anyone else without a CEIP account) ever
+# touches. Resolving a valid token serves a PDF directly; there is
+# nothing here to log into, browse, or write back through.
 public_router = APIRouter(prefix="/public/claims", tags=["Public Claim Access"])
 
 
@@ -35,10 +24,12 @@ def create_claim_access_link(
     claim_id: UUID, payload: ClaimAccessTokenCreate, db: Session = Depends(get_db)
 ):
     """
-    Generates a magic link the Contractor can send to the Engineer
-    directly (email or otherwise) - there's no email-sending service
-    wired up in this platform yet, so the link itself is returned here
-    rather than dispatched automatically.
+    Generates a link the Contractor can send directly (email, Telegram,
+    whatever) to anyone who needs to see this claim - typically the
+    Engineer. There's no email-sending service wired up in this platform,
+    so the link itself is returned here rather than dispatched
+    automatically. Opening it serves a read-only PDF straight from the
+    API (see the public_router below); it is never a page of this app.
     """
     claim = get_claim(db, claim_id)
     if claim is None:
@@ -49,7 +40,16 @@ def create_claim_access_link(
     )
 
 
-def _resolve_or_404(db: Session, token: str):
+@public_router.get("/{token}/pdf")
+def public_claim_report_pdf(token: str, db: Session = Depends(get_db)):
+    """
+    The only thing anyone without a CEIP account can ever reach: resolve
+    a valid, unexpired token straight to the same read-only PDF the
+    Contractor can download themselves (see
+    claim_service.get_claim_report_data / pdf_service.generate_claim_report_pdf).
+    inline disposition so it opens straight in the browser rather than
+    forcing a download - view-only by default, save is still up to them.
+    """
     access = resolve_access_token(db, token)
     if access is None:
         raise HTTPException(
@@ -57,103 +57,17 @@ def _resolve_or_404(db: Session, token: str):
             detail="This link is invalid or has expired. Ask the Contractor "
             "for a new one.",
         )
-    return access
 
-
-@public_router.get("/{token}")
-def public_claim_overview(token: str, db: Session = Depends(get_db)):
-    access = _resolve_or_404(db, token)
-
-    claim = get_claim(db, access.claim_id)
-    if claim is None:
+    data = get_claim_report_data(db, access.claim_id)
+    if data is None:
         raise HTTPException(status_code=404, detail="Claim not found")
 
-    project = db.get(Project, claim.project_id)
-    config = config_from_project(project)
+    pdf = generate_claim_report_pdf(data)
 
-    responses = get_claim_responses(db, claim.id)
-    decision_responses = [
-        r
-        for r in responses
-        if r.response_type
-        in ("Agreement", "PartialAgreement", "Disagreement", "Determination")
-    ]
-    engineer_responded_date = (
-        decision_responses[-1].response_date if decision_responses else None
+    return StreamingResponse(
+        pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="claim_report_{access.claim_id}.pdf"'
+        },
     )
-
-    clock = get_claim_clock(
-        awareness_date=claim.awareness_date,
-        notice_submitted_date=claim.notice_submitted_date,
-        detailed_claim_submitted_date=claim.detailed_claim_submitted_date,
-        engineer_responded_date=engineer_responded_date,
-        config=config,
-    )
-
-    events = attach_notice_periods(db, get_claim_events(db, claim.id))
-    facts = get_claim_facts(db, claim.id)
-
-    # Built from explicit schema conversions rather than returning raw
-    # ORM objects: this endpoint has no response_model (the payload mixes
-    # several different shapes), so without this the SQLAlchemy instances
-    # below wouldn't serialize cleanly through FastAPI's JSON encoder.
-    return {
-        "claim": ClaimOut.model_validate(claim),
-        "project_name": project.project_name if project else None,
-        "clock": clock,
-        "events": [EventResponse.model_validate(e) for e in events],
-        "facts": [ClaimFactOut.model_validate(f) for f in facts],
-        "fact_summary": ClaimFactSummaryOut(**get_fact_summary(db, claim.id)),
-        "responses": [ClaimResponseOut.model_validate(r) for r in responses],
-        "recipient_email": access.recipient_email,
-    }
-
-
-@public_router.patch("/{token}/facts/{fact_id}", response_model=ClaimFactOut)
-def public_respond_to_fact(
-    token: str,
-    fact_id: UUID,
-    payload: PublicFactResponseRequest,
-    db: Session = Depends(get_db),
-):
-    access = _resolve_or_404(db, token)
-
-    fact = respond_to_fact(
-        db,
-        fact_id,
-        ClaimFactRespond(
-            status=payload.status,
-            agreed_days=payload.agreed_days,
-            response_comment=payload.response_comment,
-            responded_by=access.recipient_email,
-        ),
-    )
-    if fact is None:
-        raise HTTPException(status_code=404, detail="Fact not found")
-
-    return fact
-
-
-@public_router.patch("/{token}/response", response_model=ClaimOut)
-def public_engineer_response(
-    token: str,
-    payload: PublicEngineerDecisionRequest,
-    db: Session = Depends(get_db),
-):
-    access = _resolve_or_404(db, token)
-
-    claim = engineer_respond(
-        db,
-        access.claim_id,
-        EngineerDecisionRequest(
-            response_type=payload.response_type,
-            response_date=payload.response_date,
-            days_granted=payload.days_granted,
-            comment=payload.comment,
-            responded_by=access.recipient_email,
-        ),
-    )
-    if claim is None:
-        raise HTTPException(status_code=404, detail="Claim not found")
-
-    return claim
