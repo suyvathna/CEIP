@@ -8,6 +8,11 @@ export function getComplianceRules(projectId) {
   return apiRequest(`/compliance/rules${query}`);
 }
 
+export function getEventDrivenRules(projectId) {
+  const query = projectId ? `?project_id=${projectId}` : "";
+  return apiRequest(`/compliance/event-driven-rules${query}`);
+}
+
 export function getComplianceFilters() {
   return apiRequest("/compliance/filters");
 }

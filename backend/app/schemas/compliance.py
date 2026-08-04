@@ -57,6 +57,27 @@ class ComplianceRulesOut(BaseModel):
     rules: list[ObligationRuleOut]
 
 
+class EventDrivenRuleOut(BaseModel):
+    """Reference data for the EVENT-DRIVEN half of the document register:
+    what notice/reply this is, what triggers it, and where in the app to
+    actually track a live instance of it, if anywhere."""
+
+    key: str
+    title: str
+    clause_code: str
+    direction: OwedBy
+    trigger: str
+    deadline: str
+    tracked_in: str | None
+    description: str
+
+
+class EventDrivenRulesOut(BaseModel):
+    disclaimer: str
+    contract_edition: str
+    rules: list[EventDrivenRuleOut]
+
+
 class ObligationSummaryOut(BaseModel):
     total: int
     open: int

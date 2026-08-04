@@ -99,6 +99,10 @@ export const projectStatusColor = (status) => {
   }
 };
 
+export const directionColor = (direction) => {
+  return direction === "Outgoing" ? "primary" : "secondary";
+};
+
 export const noticeStatusColor = (noticeStatus) => {
   switch (noticeStatus) {
     case "overdue":

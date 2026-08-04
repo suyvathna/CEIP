@@ -47,6 +47,7 @@ def search_evidence(
     filename: str | None = None,
     event_id: UUID | None = None,
     daily_log_id: UUID | None = None,
+    correspondence_id: UUID | None = None,
 ):
     statement = select(Evidence)
 
@@ -58,6 +59,9 @@ def search_evidence(
 
     if daily_log_id:
         statement = statement.where(Evidence.daily_log_id == daily_log_id)
+
+    if correspondence_id:
+        statement = statement.where(Evidence.correspondence_id == correspondence_id)
 
     statement = statement.order_by(Evidence.created_at.desc())
 

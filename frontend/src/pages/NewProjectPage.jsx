@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { createProject } from "../api/projects";
+import { createProject, updateProjectMilestones } from "../api/projects";
 
 const CURRENCIES = ["USD", "KHR", "THB", "EUR"];
 
@@ -17,6 +17,11 @@ const initialFormState = {
   city: "",
   planned_start: "",
   duration_days: "",
+  // Not sent as part of ProjectCreate - see handleSubmit. Kept separate
+  // on purpose so an edit to the project later (which reuses the create
+  // schema) can never accidentally blank a milestone that isn't on that
+  // form (see ProjectMilestonesUpdate's docstring in schemas/project.py).
+  letter_of_acceptance_date: "",
   currency: "USD",
   contract_value: "",
   // FIDIC 2017 Sub-Clause 20.2 default periods (days). These are
@@ -58,8 +63,15 @@ function NewProjectPage() {
     setSubmitting(true);
     setError(null);
     try {
+      // letter_of_acceptance_date is deliberately NOT part of
+      // ProjectCreate (see the field's comment above) - it goes through
+      // the same milestones PATCH the Compliance tab uses, as a second
+      // call right after creation, so this form's only job is to save
+      // the PM a trip back to Compliance to set it.
+      const { letter_of_acceptance_date, ...projectFields } = formData;
+
       const newProject = await createProject({
-        ...formData,
+        ...projectFields,
         duration_days: Number(formData.duration_days) || 0,
         contract_value: formData.contract_value === "" ? null : Number(formData.contract_value),
         notice_period_days: Number(formData.notice_period_days),
@@ -67,6 +79,11 @@ function NewProjectPage() {
         engineer_late_notice_flag_days: Number(formData.engineer_late_notice_flag_days),
         engineer_response_period_days: Number(formData.engineer_response_period_days),
       });
+
+      if (letter_of_acceptance_date) {
+        await updateProjectMilestones(newProject.id, { letter_of_acceptance_date });
+      }
+
       navigate(`/projects/${newProject.id}`);
     } catch (err) {
       setError(err.message);
@@ -138,6 +155,20 @@ function NewProjectPage() {
           Commencement date
           <input type="date" name="planned_start" value={formData.planned_start} onChange={handleChange} required />
         </label>
+        <label>
+          Letter of Acceptance date (if already issued)
+          <input
+            type="date"
+            name="letter_of_acceptance_date"
+            value={formData.letter_of_acceptance_date}
+            onChange={handleChange}
+          />
+        </label>
+        <p className="form-hint">
+          Letter of Acceptance starts the 28-day Performance Security
+          (4.2) and Advance Payment guarantee (14.2) clocks. Leave blank
+          if not yet issued — set it later from the Compliance tab.
+        </p>
         <label>
           Time for Completion (days)
           <input

@@ -8,6 +8,7 @@ class EvidenceResponse(BaseModel):
     id: UUID
     event_id: UUID | None
     daily_log_id: UUID | None
+    correspondence_id: UUID | None
     category: str | None
     caption: str | None
     filename: str

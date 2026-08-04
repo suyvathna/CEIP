@@ -1,9 +1,5 @@
 import { apiRequest, BASE_URL } from "./client";
 
-export function getDashboard(projectId) {
-  return apiRequest(`/dashboard/${projectId}`);
-}
-
 export function getProjectReport(projectId) {
   return apiRequest(`/dashboard/${projectId}/report`);
 }

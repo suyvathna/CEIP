@@ -9,7 +9,8 @@ from app.constants.compliance_rules import (
     COMPLIANCE_RULES,
     resolve_clause_code,
 )
-from app.constants.contract_edition import DEFAULT_EDITION
+from app.constants.contract_edition import DEFAULT_EDITION, clause_code
+from app.constants.event_driven_rules import EVENT_DRIVEN_DISCLAIMER, EVENT_DRIVEN_RULES
 from app.db.session import get_db
 from app.models.project import Project
 from app.schemas.compliance import (
@@ -17,6 +18,7 @@ from app.schemas.compliance import (
     ComplianceRulesOut,
     ComplianceRunOut,
     ComplianceTickOut,
+    EventDrivenRulesOut,
     ObligationOut,
     ObligationStatusOut,
     ObligationSubmitRequest,
@@ -67,6 +69,42 @@ def read_rules(
                 "conditional": rule.conditional,
             }
             for rule in COMPLIANCE_RULES
+        ],
+    }
+
+
+@router.get("/event-driven-rules", response_model=EventDrivenRulesOut)
+def read_event_driven_rules(
+    project_id: UUID | None = None,
+    db: Session = Depends(get_db),
+):
+    """
+    The EVENT-DRIVEN half of the document register - notices and replies
+    that only exist once something happens, with clause numbers resolved
+    for a project's edition exactly like /rules above.
+    """
+    edition = DEFAULT_EDITION.value
+
+    if project_id is not None:
+        project = db.get(Project, project_id)
+        if project is not None:
+            edition = getattr(project, "contract_edition", None) or edition
+
+    return {
+        "disclaimer": EVENT_DRIVEN_DISCLAIMER,
+        "contract_edition": edition,
+        "rules": [
+            {
+                "key": rule.key,
+                "title": rule.title,
+                "clause_code": clause_code(rule.clause_name, edition),
+                "direction": rule.direction,
+                "trigger": rule.trigger,
+                "deadline": rule.deadline,
+                "tracked_in": rule.tracked_in,
+                "description": rule.description,
+            }
+            for rule in EVENT_DRIVEN_RULES
         ],
     }
 

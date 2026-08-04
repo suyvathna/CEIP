@@ -42,6 +42,14 @@ CLAUSE_NUMBERS: dict[str, dict[ContractEdition, str]] = {
         ContractEdition.FIDIC_2017: "Sub-Clause 4.2",
         ContractEdition.FIDIC_1999: "Sub-Clause 4.2",
     },
+    "contractors_representative": {
+        ContractEdition.FIDIC_2017: "Sub-Clause 4.3",
+        ContractEdition.FIDIC_1999: "Sub-Clause 4.3",
+    },
+    "environmental_protection": {
+        ContractEdition.FIDIC_2017: "Sub-Clause 4.18",
+        ContractEdition.FIDIC_1999: "Sub-Clause 4.18",
+    },
     "health_and_safety": {
         ContractEdition.FIDIC_2017: "Sub-Clause 4.8",
         ContractEdition.FIDIC_1999: "Sub-Clause 4.8",
@@ -49,6 +57,10 @@ CLAUSE_NUMBERS: dict[str, dict[ContractEdition, str]] = {
     "quality_management": {
         ContractEdition.FIDIC_2017: "Sub-Clause 4.9",
         ContractEdition.FIDIC_1999: "Sub-Clause 4.9",
+    },
+    "personnel_and_equipment_records": {
+        ContractEdition.FIDIC_2017: "Sub-Clause 6.10",
+        ContractEdition.FIDIC_1999: "Sub-Clause 6.10",
     },
     "progress_reports": {
         ContractEdition.FIDIC_2017: "Sub-Clause 4.20",
@@ -98,6 +110,10 @@ CLAUSE_NUMBERS: dict[str, dict[ContractEdition, str]] = {
         ContractEdition.FIDIC_2017: "Sub-Clause 14.2",
         ContractEdition.FIDIC_1999: "Sub-Clause 14.2",
     },
+    "schedule_of_payments": {
+        ContractEdition.FIDIC_2017: "Sub-Clause 14.4",
+        ContractEdition.FIDIC_1999: "Sub-Clause 14.4",
+    },
     "application_for_ipc": {
         ContractEdition.FIDIC_2017: "Sub-Clause 14.3",
         ContractEdition.FIDIC_1999: "Sub-Clause 14.3",
@@ -133,6 +149,38 @@ CLAUSE_NUMBERS: dict[str, dict[ContractEdition, str]] = {
     "fully_detailed_claim": {
         ContractEdition.FIDIC_2017: "Sub-Clause 20.2.4",
         ContractEdition.FIDIC_1999: "Sub-Clause 20.1",
+    },
+    "engineer_late_notice_flag": {
+        ContractEdition.FIDIC_2017: "Sub-Clause 20.2.2",
+        ContractEdition.FIDIC_1999: "Sub-Clause 20.1",
+    },
+    "unforeseeable_physical_conditions": {
+        ContractEdition.FIDIC_2017: "Sub-Clause 4.12",
+        ContractEdition.FIDIC_1999: "Sub-Clause 4.12",
+    },
+    "fossils": {
+        ContractEdition.FIDIC_2017: "Sub-Clause 4.23",
+        ContractEdition.FIDIC_1999: "Sub-Clause 4.24",
+    },
+    "exceptional_event": {
+        ContractEdition.FIDIC_2017: "Sub-Clause 18.4",
+        ContractEdition.FIDIC_1999: "Sub-Clause 19.2",
+    },
+    "notice_to_correct": {
+        ContractEdition.FIDIC_2017: "Sub-Clause 15.1",
+        ContractEdition.FIDIC_1999: "Sub-Clause 15.1",
+    },
+    "termination_by_employer": {
+        ContractEdition.FIDIC_2017: "Sub-Clause 15.2",
+        ContractEdition.FIDIC_1999: "Sub-Clause 15.2",
+    },
+    "suspension_by_contractor": {
+        ContractEdition.FIDIC_2017: "Sub-Clause 16.1",
+        ContractEdition.FIDIC_1999: "Sub-Clause 16.1",
+    },
+    "termination_by_contractor": {
+        ContractEdition.FIDIC_2017: "Sub-Clause 16.2",
+        ContractEdition.FIDIC_1999: "Sub-Clause 16.2",
     },
 }
 

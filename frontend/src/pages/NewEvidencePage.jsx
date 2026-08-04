@@ -11,7 +11,7 @@ const PHOTO_CATEGORIES = [
 ];
 
 function NewEvidencePage() {
-  const { projectId, eventId, dailyLogId } = useParams();
+  const { projectId, eventId, dailyLogId, correspondenceId } = useParams();
   const [file, setFile] = useState(null);
   const [category, setCategory] = useState("General");
   const [caption, setCaption] = useState("");
@@ -21,7 +21,9 @@ function NewEvidencePage() {
 
   const backTo = eventId
     ? `/projects/${projectId}/events/${eventId}`
-    : `/projects/${projectId}/daily-log/${dailyLogId}`;
+    : correspondenceId
+      ? `/projects/${projectId}/correspondence/${correspondenceId}`
+      : `/projects/${projectId}/daily-log/${dailyLogId}`;
 
   function handleFileChange(e) {
     setFile(e.target.files[0]);
@@ -36,7 +38,11 @@ function NewEvidencePage() {
     setSubmitting(true);
     setError(null);
     try {
-      const owner = eventId ? { eventId } : { dailyLogId };
+      const owner = eventId
+        ? { eventId }
+        : correspondenceId
+          ? { correspondenceId }
+          : { dailyLogId };
       await uploadEvidence(owner, file, dailyLogId ? { category, caption } : {});
       navigate(backTo);
     } catch (err) {

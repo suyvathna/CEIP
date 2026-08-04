@@ -41,7 +41,6 @@ import {
   createClaimFact,
   respondToFact,
 } from "../api/claimFacts";
-import { getClaimDelayAnalysis } from "../api/programme";
 import { getPublicClaimReportPdfUrl } from "../api/claimAccess";
 import DeterminationPanel from "../components/DeterminationPanel";
 
@@ -659,88 +658,6 @@ function FactsRegister({ claimId, onChanged }) {
   );
 }
 
-function DelayAnalysisPanel({ claimId, projectId }) {
-  const analysisQuery = useQuery({
-    queryKey: ["claimDelayAnalysis", claimId],
-    queryFn: () => getClaimDelayAnalysis(claimId, projectId),
-    retry: false,
-  });
-
-  return (
-    <Paper sx={{ p: 3 }}>
-      <Typography variant="h6" gutterBottom>
-        Delay Analysis (Programme-based)
-      </Typography>
-      {analysisQuery.isLoading && <CircularProgress size={20} />}
-      {analysisQuery.isError && (
-        <Typography variant="body2" color="text.secondary">
-          No programme activities recorded for this project yet. Add
-          activities and link event impacts on the Programme tab to get a
-          critical-path day-count for this claim.
-        </Typography>
-      )}
-      {analysisQuery.data && (
-        <Stack spacing={1}>
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 6, sm: 3 }}>
-              <Typography variant="caption" color="text.secondary">
-                Contractor's ask
-              </Typography>
-              <Typography variant="h5">
-                {analysisQuery.data.claimed_days ?? "—"}
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 6, sm: 3 }}>
-              <Typography variant="caption" color="text.secondary">
-                Fact-register agreed
-              </Typography>
-              <Typography variant="h5">
-                {analysisQuery.data.fact_register_agreed_days ?? "—"}
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 6, sm: 3 }}>
-              <Typography variant="caption" color="text.secondary">
-                CPM critical delay
-              </Typography>
-              <Typography variant="h5">
-                {analysisQuery.data.gross_critical_delay_days}
-              </Typography>
-            </Grid>
-            <Grid size={{ xs: 6, sm: 3 }}>
-              <Typography variant="caption" color="text.secondary">
-                Absorbed by float
-              </Typography>
-              <Typography variant="h5">
-                {analysisQuery.data.float_absorbed_days}
-              </Typography>
-            </Grid>
-          </Grid>
-          <Typography variant="body2" color="text.secondary">
-            Baseline finish {analysisQuery.data.baseline_project_finish} →
-            with this claim's impacts applied,{" "}
-            {analysisQuery.data.claim_impacted_project_finish}.
-          </Typography>
-          {analysisQuery.data.overlapping_contractor_risk_events.length > 0 && (
-            <Alert severity="info">
-              {analysisQuery.data.overlapping_contractor_risk_events.length}{" "}
-              concurrent Contractor-Risk event(s) overlap this claim's
-              affected activities. Per the SCL Protocol these don't reduce
-              this claim's entitlement on their own - review with the
-              Engineer:{" "}
-              {analysisQuery.data.overlapping_contractor_risk_events
-                .map((e) => e.event_title)
-                .join(", ")}
-            </Alert>
-          )}
-          <Typography variant="caption" color="text.secondary">
-            {analysisQuery.data.note}
-          </Typography>
-        </Stack>
-      )}
-    </Paper>
-  );
-}
-
 function ShareReportPanel({ claimId }) {
   const { enqueueSnackbar } = useSnackbar();
   const [email, setEmail] = useState("");
@@ -1000,7 +917,6 @@ function ClaimDetailPage() {
           triggers the NOD clock. */}
       <DeterminationPanel claimId={claimId} projectId={projectId} />
       <FactsRegister claimId={claimId} onChanged={refreshAll} />
-      <DelayAnalysisPanel claimId={claimId} projectId={projectId} />
       <ShareReportPanel claimId={claimId} />
     </Stack>
   );

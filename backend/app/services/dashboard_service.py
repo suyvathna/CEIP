@@ -94,50 +94,6 @@ def _get_project_event_counts(db: Session, project_id: UUID) -> dict:
     }
 
 
-def get_dashboard_service(db: Session, project_id: UUID):
-    project = db.get(Project, project_id)
-
-    if project is None:
-        return None
-
-    counts = _get_project_event_counts(db, project_id)
-
-    event_type_statistics = db.execute(
-        select(
-            Event.event_type.label("event_type"),
-            func.count(Event.id).label("total"),
-        )
-        .where(Event.project_id == project_id)
-        .group_by(Event.event_type)
-        .order_by(Event.event_type)
-    ).all()
-
-    recent_events = db.scalars(
-        select(Event)
-        .where(Event.project_id == project_id)
-        .order_by(Event.created_at.desc())
-        .limit(5)
-    ).all()
-
-    return {
-        "project_id": project.id,
-        "project_name": project.project_name,
-        "total_events": counts["total_events"],
-        "total_daily_logs": counts["total_daily_logs"],
-        "total_evidence": counts["total_evidence"],
-        "open_events": counts["open_events"],
-        "closed_events": counts["closed_events"],
-        "high_severity_events": counts["high_events"],
-        "medium_severity_events": counts["medium_events"],
-        "low_severity_events": counts["low_events"],
-        "event_type_statistics": [
-            {"event_type": row.event_type, "total": row.total}
-            for row in event_type_statistics
-        ],
-        "recent_events": recent_events or [],
-    }
-
-
 def get_project_report_service(db: Session, project_id: UUID):
     project = db.get(Project, project_id)
 

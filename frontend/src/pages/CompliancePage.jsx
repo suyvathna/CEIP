@@ -14,6 +14,8 @@ import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
 import TextField from "@mui/material/TextField";
 import MenuItem from "@mui/material/MenuItem";
 import Dialog from "@mui/material/Dialog";
@@ -36,6 +38,7 @@ import { todayLocalISODate } from "../utils/date";
 import {
   getComplianceRegister,
   getComplianceRules,
+  getEventDrivenRules,
   regenerateRegister,
   reopenObligation,
   runComplianceTick,
@@ -371,9 +374,112 @@ function WaiveDialog({ obligation, onClose, projectId }) {
   );
 }
 
+function trackedInLink(projectId, trackedIn) {
+  switch (trackedIn) {
+    case "Claims tab":
+      return `/projects/${projectId}/claims`;
+    case "Variations tab":
+      return `/projects/${projectId}/claims?tab=variations`;
+    case "Determinations tab":
+      return `/projects/${projectId}/claims?tab=determinations`;
+    case "Correspondence tab":
+      return `/projects/${projectId}/correspondence`;
+    default:
+      return null;
+  }
+}
+
+function EventDrivenTable({ projectId }) {
+  const query = useQuery({
+    queryKey: ["eventDrivenRules", projectId],
+    queryFn: () => getEventDrivenRules(projectId),
+  });
+
+  const rules = query.data?.rules || [];
+
+  return (
+    <Stack spacing={2}>
+      <Typography variant="body2" color="text.secondary">
+        The notices and replies that only exist once something happens —
+        a claim, a disputed instruction, a discovery on Site. Unlike the
+        Always register, no due date is computed here: the deadline runs
+        from the event, not from a fixed contract milestone. Where this
+        platform already tracks a live instance of one of these, follow
+        the link; for the rest, log it on the Correspondence tab as it
+        goes out or comes in.
+      </Typography>
+
+      {query.isLoading && <CircularProgress size={24} />}
+      {query.isError && <Alert severity="error">{query.error.message}</Alert>}
+
+      {query.data && (
+        <Alert severity="info">{query.data.disclaimer}</Alert>
+      )}
+
+      {rules.length > 0 && (
+        <TableContainer component={Paper}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Clause</TableCell>
+                <TableCell>Document / Notice</TableCell>
+                <TableCell>Direction</TableCell>
+                <TableCell>Trigger</TableCell>
+                <TableCell>Deadline</TableCell>
+                <TableCell align="right">Track in</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {rules.map((rule) => {
+                const link = trackedInLink(projectId, rule.tracked_in);
+                return (
+                  <TableRow key={rule.key} hover>
+                    <TableCell sx={{ whiteSpace: "nowrap" }}>{rule.clause_code}</TableCell>
+                    <TableCell>
+                      <Tooltip title={rule.description}>
+                        <Typography variant="body2">{rule.title}</Typography>
+                      </Tooltip>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        color={OWED_BY_COLORS[rule.direction] || "default"}
+                        label={rule.direction}
+                      />
+                    </TableCell>
+                    <TableCell sx={{ maxWidth: 260 }}>
+                      <Typography variant="body2">{rule.trigger}</Typography>
+                    </TableCell>
+                    <TableCell sx={{ maxWidth: 220 }}>
+                      <Typography variant="body2">{rule.deadline}</Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      {link ? (
+                        <Button size="small" component={RouterLink} to={link}>
+                          {rule.tracked_in} →
+                        </Button>
+                      ) : (
+                        <Typography variant="caption" color="text.secondary">
+                          —
+                        </Typography>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+    </Stack>
+  );
+}
+
 function CompliancePage() {
   const { projectId } = useParams();
   const queryClient = useQueryClient();
+  const [docTab, setDocTab] = useState("always");
   const [statusFilter, setStatusFilter] = useState("");
   const [submitTarget, setSubmitTarget] = useState(null);
   const [waiveTarget, setWaiveTarget] = useState(null);
@@ -512,6 +618,17 @@ function CompliancePage() {
         </Stack>
       </Stack>
 
+      <Tabs
+        value={docTab}
+        onChange={(_, v) => setDocTab(v)}
+        sx={{ borderBottom: 1, borderColor: "divider" }}
+      >
+        <Tab value="always" label="Always" />
+        <Tab value="eventDriven" label="Event-Driven" />
+      </Tabs>
+
+      {docTab === "always" && (
+        <>
       <Typography variant="body2" color="text.secondary">
         The obligations a FIDIC contract requires whether or not anything
         goes wrong on site. Nobody forgets to claim for a flooded site;
@@ -684,6 +801,10 @@ function CompliancePage() {
           </Table>
         </TableContainer>
       )}
+        </>
+      )}
+
+      {docTab === "eventDriven" && <EventDrivenTable projectId={projectId} />}
 
       {submitTarget && (
         <SubmitDialog

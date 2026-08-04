@@ -13,11 +13,6 @@ from app.models.daily_log_entries import (
 from app.models.evidence import Evidence
 from app.models.evidence_access_log import EvidenceAccessLog
 from app.models.user import User
-from app.models.programme_activity import (
-    Activity,
-    ActivityPredecessor,
-    EventActivityImpact,
-)
 from app.models.claim import (
     Claim,
     ClaimDailyLog,
@@ -27,6 +22,7 @@ from app.models.claim import (
 )
 from app.models.claim_fact import ClaimFact, ClaimFactEvidence
 from app.models.claim_access_token import ClaimAccessToken
+from app.models.correspondence import Correspondence
 
 # Engine A - the "ALWAYS DO" compliance scheduler.
 from app.models.compliance_obligation import ComplianceObligation

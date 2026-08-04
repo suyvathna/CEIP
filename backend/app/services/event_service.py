@@ -7,7 +7,6 @@ from sqlalchemy.exc import IntegrityError
 
 from app.constants.contract_triggers import TriggerType
 from app.models.daily_log import DailyLog, DailyLogEventLink
-from app.models.evidence import Evidence
 from app.models.event import Event
 from app.models.project import Project
 from app.schemas.event import EventCreate
@@ -227,50 +226,6 @@ def get_project_events_service(db: Session, project_id: UUID):
     return attach_notice_periods(db, db.scalars(stmt).all())
 
 
-def get_project_activity_service(db: Session, project_id: UUID):
-    stmt = (
-        select(
-            Event.id.label("event_id"),
-            Event.title,
-            Event.event_date,
-            Event.event_time,
-            Event.created_at,
-            func.count(Evidence.id).label("evidence_count"),
-            func.count(DailyLog.id).label("daily_log_exists"),
-        )
-        .outerjoin(Evidence, Evidence.event_id == Event.id)
-        .outerjoin(DailyLog, DailyLog.event_id == Event.id)
-        .where(Event.project_id == project_id)
-        .group_by(
-            Event.id,
-            Event.title,
-            Event.event_date,
-            Event.event_time,
-            Event.created_at,
-        )
-        .order_by(
-            Event.event_date.desc(),
-            Event.event_time.desc(),
-        )
-    )
-
-    activities = db.execute(stmt).all()
-
-    return [
-        {
-            "activity_type": "EVENT",
-            "event_id": activity.event_id,
-            "title": activity.title,
-            "event_date": activity.event_date,
-            "event_time": activity.event_time,
-            "evidence_count": activity.evidence_count,
-            "daily_log_exists": activity.daily_log_exists > 0,
-            "created_at": activity.created_at,
-        }
-        for activity in activities
-    ]
-
-
 def filter_events_service(
     db: Session,
     project_id: UUID | None = None,
@@ -298,35 +253,3 @@ def filter_events_service(
     )
 
     return attach_notice_periods(db, db.scalars(stmt).all())
-
-
-def get_timeline_analytics_service(
-    db: Session,
-    project_id: UUID,
-):
-    stmt = (
-        select(Event)
-        .where(Event.project_id == project_id)
-        .order_by(
-            Event.event_date,
-            Event.event_time,
-        )
-    )
-    events = db.scalars(stmt).all()
-
-    grouped = {}
-
-    for event in events:
-        if event.event_date not in grouped:
-            grouped[event.event_date] = []
-
-        grouped[event.event_date].append(event)
-
-    return [
-        {
-            "event_date": event_date,
-            "total_events": len(day_events),
-            "events": day_events,
-        }
-        for event_date, day_events in grouped.items()
-    ]

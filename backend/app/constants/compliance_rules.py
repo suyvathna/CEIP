@@ -180,6 +180,62 @@ COMPLIANCE_RULES: tuple[ObligationRule, ...] = (
             "of the Commencement Date."
         ),
     ),
+    ObligationRule(
+        key="contractors_representative_notice",
+        title="Notify the Contractor's Representative",
+        clause_name="contractors_representative",
+        clause_title="Contractor's Representative",
+        cadence=ObligationCadence.ONE_OFF,
+        anchor=MilestoneAnchor.COMMENCEMENT,
+        offset_days=7,
+        category=ObligationCategory.MOBILISATION,
+        owed_by=OwedBy.CONTRACTOR,
+        description=(
+            "The Contractor shall notify the Employer of the name and "
+            "authority of the person who will act as the Contractor's "
+            "Representative, and the extent of authority delegated to "
+            "any other person acting on the Representative's behalf."
+        ),
+    ),
+    ObligationRule(
+        key="environmental_management_plan",
+        title="Submit the Environmental Management Plan",
+        clause_name="environmental_protection",
+        clause_title="Environmental Protection",
+        cadence=ObligationCadence.ONE_OFF,
+        anchor=MilestoneAnchor.COMMENCEMENT,
+        offset_days=28,
+        category=ObligationCategory.MOBILISATION,
+        owed_by=OwedBy.CONTRACTOR,
+        conditional=True,
+        description=(
+            "Not a standing requirement of the unamended General "
+            "Conditions' short Sub-Clause 4.18 text, but near-universal "
+            "on ADB/World Bank-funded infrastructure work under the "
+            "Particular Conditions or the Environmental Permit. Waive "
+            "this rule if this contract carries no such requirement."
+        ),
+    ),
+    ObligationRule(
+        key="traffic_management_plan",
+        title="Submit the Traffic Management Plan",
+        clause_name="environmental_protection",
+        clause_title="Environmental Protection / Particular Conditions",
+        cadence=ObligationCadence.ONE_OFF,
+        anchor=MilestoneAnchor.COMMENCEMENT,
+        offset_days=28,
+        category=ObligationCategory.MOBILISATION,
+        owed_by=OwedBy.CONTRACTOR,
+        conditional=True,
+        description=(
+            "A Particular-Conditions requirement on road and highway "
+            "works, not a numbered General Conditions clause in its own "
+            "right - kept on this register because it is exactly the "
+            "kind of mobilisation submission that is easy to forget "
+            "chasing the ones that are. Waive if this contract carries "
+            "no such requirement."
+        ),
+    ),
     # ---------------------------------------------------------------
     # Programme
     # ---------------------------------------------------------------
@@ -245,9 +301,44 @@ COMPLIANCE_RULES: tuple[ObligationRule, ...] = (
             "raises it for the first time months later."
         ),
     ),
+    ObligationRule(
+        key="personnel_equipment_records",
+        title="Submit records of Contractor's Personnel and Equipment",
+        clause_name="personnel_and_equipment_records",
+        clause_title="Records of Contractor's Personnel and Equipment",
+        cadence=ObligationCadence.MONTHLY,
+        anchor=MilestoneAnchor.MONTH_END,
+        offset_config_field="progress_report_due_days",
+        category=ObligationCategory.REPORTING,
+        owed_by=OwedBy.CONTRACTOR,
+        description=(
+            "Monthly records of the numbers of each category of the "
+            "Contractor's Personnel and each type of Equipment on Site, "
+            "in the form the Engineer instructs - due on the same cycle "
+            "as the Progress Report, and just as easy to forget once the "
+            "report itself is filed."
+        ),
+    ),
     # ---------------------------------------------------------------
     # Payment cycle
     # ---------------------------------------------------------------
+    ObligationRule(
+        key="schedule_of_payments",
+        title="Submit the Schedule of Payments",
+        clause_name="schedule_of_payments",
+        clause_title="Schedule of Payments",
+        cadence=ObligationCadence.ONE_OFF,
+        anchor=MilestoneAnchor.COMMENCEMENT,
+        offset_days=28,
+        category=ObligationCategory.PAYMENT,
+        owed_by=OwedBy.CONTRACTOR,
+        conditional=True,
+        description=(
+            "Only where payment is on a Schedule of Payments basis "
+            "rather than measured against a Bill of Quantities - waive "
+            "this rule where the contract does not use one."
+        ),
+    ),
     ObligationRule(
         key="monthly_statement",
         title="Submit the monthly Statement (application for IPC)",

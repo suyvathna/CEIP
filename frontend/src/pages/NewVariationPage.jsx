@@ -78,15 +78,15 @@ function NewVariationPage() {
     <Stack spacing={2}>
       <Button
         component={RouterLink}
-        to={`/projects/${projectId}/variations`}
+        to={`/projects/${projectId}/claims?tab=variations`}
         size="small"
         startIcon={<ArrowBackIcon fontSize="small" />}
         sx={{ alignSelf: "flex-start" }}
       >
-        Back to variations
+        Back to claims
       </Button>
 
-      <ProjectNav projectId={projectId} active="variations" />
+      <ProjectNav projectId={projectId} active="claims" />
 
       <Typography variant="h4" fontWeight={700}>
         Log an instruction or Variation

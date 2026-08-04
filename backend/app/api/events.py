@@ -20,13 +20,9 @@ from app.services.event_service import (
     search_events_service,
     update_event_service,
     get_project_events_service,
-    get_project_activity_service,
     filter_events_service,
-    get_timeline_analytics_service,
     mark_notice_given_service,
 )
-from app.schemas.activity import ActivityResponse
-from app.schemas.timeline_analytics import TimelineDay
 from app.services.auth_service import (get_current_user)
 
 router = APIRouter(
@@ -79,19 +75,6 @@ def read_project_events(
     )
 
 @router.get(
-    "/project/{project_id}/activity",
-    response_model=list[ActivityResponse],
-)
-def project_activity(
-    project_id: UUID,
-    db: Session = Depends(get_db),
-):
-    return get_project_activity_service(
-        db,
-        project_id,
-    )
-
-@router.get(
     "/filter",
     response_model=list[EventResponse],
 )
@@ -109,22 +92,6 @@ def filter_events(
         severity=severity,
         status=status,
     )
-
-@router.get(
-    "/project/{project_id}/timeline-analytics",
-    response_model=list[TimelineDay],
-)
-def timeline_analytics(
-    project_id: UUID,
-    db: Session = Depends(get_db),
-):
-    return get_timeline_analytics_service(
-        db,
-        project_id,
-    )
-
-
-
 
 
 
