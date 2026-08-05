@@ -16,8 +16,6 @@ import EditEventPage from "./pages/EditEventPage";
 import RegisterPage from "./pages/RegisterPage";
 import ProjectReportPage from "./pages/ProjectReportPage";
 import SearchResultsPage from "./pages/SearchResultsPage";
-import EventRedirectPage from "./pages/EventRedirectPage";
-import DailyLogRedirectPage from "./pages/DailyLogRedirectPage";
 import ClaimListPage from "./pages/ClaimListPage";
 import NewClaimPage from "./pages/NewClaimPage";
 import ClaimDetailPage from "./pages/ClaimDetailPage";
@@ -40,15 +38,17 @@ function App() {
             resolves straight to a PDF from the API itself (see
             api/claimAccess.js), never a page of this app. */}
         <Route element={<ProtectedRoute />}>
-          <Route path="/deadlines" element={<DeadlinesDashboardPage />} />
-          <Route path="/search" element={<SearchResultsPage />} />
-          <Route path="/events/:eventId" element={<EventRedirectPage />} />
-          <Route path="/daily-logs/:dailyLogId" element={<DailyLogRedirectPage />} />
           <Route path="/" element={<ProjectListPage />} />
           <Route path="/projects/new" element={<NewProjectPage />} />
           <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
           <Route path="/projects/:projectId/edit" element={<EditProjectPage />} />
           <Route path="/projects/:projectId/report" element={<ProjectReportPage />} />
+
+          {/* Deadlines, Search: project-scoped only - no global,
+              cross-project views anywhere in this app. See ProjectNav for
+              the Deadlines tab and Layout for the project-scoped search box. */}
+          <Route path="/projects/:projectId/deadlines" element={<DeadlinesDashboardPage />} />
+          <Route path="/projects/:projectId/search" element={<SearchResultsPage />} />
 
           {/* Engine A - the "ALWAYS DO" compliance register. The engines'
               alerts link straight into these paths, so they have to match

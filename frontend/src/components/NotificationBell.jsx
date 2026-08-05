@@ -41,20 +41,23 @@ const CATEGORY_LABELS = {
 // instruction on site wouldn't surface here until the PM reloaded.
 const REFETCH_MS = 60_000;
 
-function NotificationBell() {
+// Always scoped to one project via the projectId prop - there is no
+// cross-project alert stream anywhere in this app. Layout only renders
+// this component at all while inside a project's routes.
+function NotificationBell({ projectId }) {
   const [anchorEl, setAnchorEl] = useState(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const summaryQuery = useQuery({
-    queryKey: ["notificationSummary"],
-    queryFn: () => getNotificationSummary(),
+    queryKey: ["notificationSummary", projectId],
+    queryFn: () => getNotificationSummary(projectId),
     refetchInterval: REFETCH_MS,
   });
 
   const listQuery = useQuery({
-    queryKey: ["notifications", "unread"],
-    queryFn: () => getNotifications({ unreadOnly: true, limit: 20 }),
+    queryKey: ["notifications", "unread", projectId],
+    queryFn: () => getNotifications({ projectId, unreadOnly: true, limit: 20 }),
     enabled: Boolean(anchorEl),
   });
 
@@ -67,7 +70,7 @@ function NotificationBell() {
   });
 
   const readAllMutation = useMutation({
-    mutationFn: () => markAllNotificationsRead(),
+    mutationFn: () => markAllNotificationsRead(projectId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
       queryClient.invalidateQueries({ queryKey: ["notificationSummary"] });

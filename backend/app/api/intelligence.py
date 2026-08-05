@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -19,9 +21,11 @@ router = APIRouter(
 )
 def search(
     q: str,
+    project_id: UUID | None = None,
     db: Session = Depends(get_db),
 ):
     return intelligence_search(
         db,
         q,
+        project_id,
     )

@@ -4,6 +4,7 @@ import Tab from "@mui/material/Tab";
 import Box from "@mui/material/Box";
 import SummarizeIcon from "@mui/icons-material/Summarize";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import ScheduleIcon from "@mui/icons-material/Schedule";
 import GavelIcon from "@mui/icons-material/Gavel";
 import FactCheckIcon from "@mui/icons-material/FactCheck";
 import ForwardToInboxIcon from "@mui/icons-material/ForwardToInbox";
@@ -14,16 +15,22 @@ import ForwardToInboxIcon from "@mui/icons-material/ForwardToInbox";
  * tab switching.
  *
  * Order follows the shape of the contract rather than the order the
- * screens were built: what the calendar requires (Compliance), what is
- * being claimed (Claims — which now also holds Variations and
- * Determinations as sub-tabs), what was sent to/received from the
- * Engineer outside this platform (Correspondence), and the exportable
- * record of it all (Report).
+ * screens were built: what's coming up next (Deadlines, right alongside
+ * Overview), what the calendar requires (Compliance), what is being
+ * claimed (Claims — which now also holds Variations and Determinations as
+ * sub-tabs), what was sent to/received from the Engineer outside this
+ * platform (Correspondence), and the exportable record of it all (Report).
+ *
+ * Every screen reachable from here is scoped to this one project - there
+ * is no cross-project view anywhere in the app, Deadlines included.
  */
 function ProjectNav({ projectId, active }) {
   return (
     <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
-      <Tabs value={active} variant="scrollable" scrollButtons="auto">
+      {/* MUI wants `false`, not undefined/null, for "no tab selected" -
+          used on screens like Search that aren't one of the fixed
+          sections below. */}
+      <Tabs value={active || false} variant="scrollable" scrollButtons="auto">
         <Tab
           value="overview"
           label="Overview"
@@ -31,6 +38,14 @@ function ProjectNav({ projectId, active }) {
           iconPosition="start"
           component={RouterLink}
           to={`/projects/${projectId}`}
+        />
+        <Tab
+          value="deadlines"
+          label="Deadlines"
+          icon={<ScheduleIcon fontSize="small" />}
+          iconPosition="start"
+          component={RouterLink}
+          to={`/projects/${projectId}/deadlines`}
         />
         <Tab
           value="compliance"

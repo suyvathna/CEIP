@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Link as RouterLink, useSearchParams } from "react-router-dom";
+import { Link as RouterLink, useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import Typography from "@mui/material/Typography";
 import Stack from "@mui/material/Stack";
@@ -14,6 +14,7 @@ import Alert from "@mui/material/Alert";
 import EventNoteIcon from "@mui/icons-material/EventNote";
 import DescriptionIcon from "@mui/icons-material/Description";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
+import ProjectNav from "../components/ProjectNav";
 import { searchIntelligence } from "../api/intelligence";
 import { BASE_URL } from "../api/client";
 
@@ -23,19 +24,23 @@ const ICONS = {
   Evidence: <AttachFileIcon fontSize="small" />,
 };
 
-function resultLink(result) {
-  if (result.item_type === "Event") return `/events/${result.id}`;
-  if (result.item_type === "Daily Log") return `/daily-logs/${result.id}`;
+// Results are already scoped to this project (see searchIntelligence), so
+// every link resolves straight to its project-scoped route - no redirect
+// hop needed to look up which project an id belongs to.
+function resultLink(result, projectId) {
+  if (result.item_type === "Event") return `/projects/${projectId}/events/${result.id}`;
+  if (result.item_type === "Daily Log") return `/projects/${projectId}/daily-log/${result.id}`;
   return null;
 }
 
 function SearchResultsPage() {
+  const { projectId } = useParams();
   const [searchParams] = useSearchParams();
   const q = searchParams.get("q") || "";
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["intelligenceSearch", q],
-    queryFn: () => searchIntelligence(q),
+    queryKey: ["intelligenceSearch", projectId, q],
+    queryFn: () => searchIntelligence(q, projectId),
     enabled: q.length > 0,
   });
 
@@ -50,6 +55,8 @@ function SearchResultsPage() {
 
   return (
     <Stack spacing={2}>
+      <ProjectNav projectId={projectId} active={false} />
+
       <Typography variant="h4" fontWeight={700}>
         Search results
       </Typography>
@@ -77,7 +84,7 @@ function SearchResultsPage() {
           </Typography>
           <List disablePadding>
             {results.map((result, idx) => {
-              const href = resultLink(result);
+              const href = resultLink(result, projectId);
               const isEvidence = result.item_type === "Evidence";
 
               return (

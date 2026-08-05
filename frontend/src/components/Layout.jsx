@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Outlet, Link as RouterLink, useNavigate } from "react-router-dom";
+import { Outlet, Link as RouterLink, useMatch, useNavigate } from "react-router-dom";
 import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
@@ -11,7 +11,6 @@ import Container from "@mui/material/Container";
 import Stack from "@mui/material/Stack";
 import SearchIcon from "@mui/icons-material/Search";
 import LogoutIcon from "@mui/icons-material/Logout";
-import ScheduleIcon from "@mui/icons-material/Schedule";
 import NotificationBell from "./NotificationBell";
 import { useAuth } from "../context/AuthContext";
 
@@ -20,11 +19,23 @@ function Layout() {
   const navigate = useNavigate();
   const [searchValue, setSearchValue] = useState("");
 
+  // Everything in this app is scoped to one project - there is no
+  // cross-project view anywhere, including search and alerts. Layout
+  // wraps every route (project and non-project alike), so it has to know
+  // whether the current route is inside a project to decide whether to
+  // show either at all. "/projects/new" matches this pattern too (its
+  // "projectId" slot is literally the word "new"), so that's excluded -
+  // it isn't a real project.
+  const projectMatch = useMatch("/projects/:projectId/*");
+  const matchedProjectId = projectMatch?.params?.projectId;
+  const activeProjectId =
+    matchedProjectId && matchedProjectId !== "new" ? matchedProjectId : null;
+
   function handleSearchSubmit(e) {
     e.preventDefault();
     const trimmed = searchValue.trim();
-    if (!trimmed) return;
-    navigate(`/search?q=${encodeURIComponent(trimmed)}`);
+    if (!trimmed || !activeProjectId) return;
+    navigate(`/projects/${activeProjectId}/search?q=${encodeURIComponent(trimmed)}`);
   }
 
   return (
@@ -50,18 +61,10 @@ function Layout() {
               <Button component={RouterLink} to="/" size="small">
                 Projects
               </Button>
-              <Button
-                component={RouterLink}
-                to="/deadlines"
-                size="small"
-                startIcon={<ScheduleIcon fontSize="small" />}
-              >
-                Deadlines
-              </Button>
             </Stack>
           )}
 
-          {loggedIn && (
+          {loggedIn && activeProjectId && (
             <Box
               component="form"
               onSubmit={handleSearchSubmit}
@@ -70,7 +73,7 @@ function Layout() {
               <TextField
                 size="small"
                 fullWidth
-                placeholder="Search events, diaries, evidence…"
+                placeholder="Search this project's events, diaries, evidence…"
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
                 slotProps={{
@@ -86,12 +89,12 @@ function Layout() {
             </Box>
           )}
 
-          {/* Both engines write into one alert stream and this is the
-              only place it surfaces globally - the bell turns red the
-              moment anything rights-destroying (a Sub-Clause 20.2 notice
-              period, a 3.7.5 NOD window, a 3.5 instruction notice) is
-              inside its alert window. */}
-          {loggedIn && <NotificationBell />}
+          {/* Both engines write into one alert stream, scoped to whichever
+              project is currently open - never shown mixed across
+              projects, so it only renders at all while inside one. */}
+          {loggedIn && activeProjectId && (
+            <NotificationBell projectId={activeProjectId} />
+          )}
 
           {loggedIn ? (
             <Button

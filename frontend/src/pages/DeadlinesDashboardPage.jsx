@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink, useParams } from "react-router-dom";
 import Typography from "@mui/material/Typography";
 import Stack from "@mui/material/Stack";
 import Paper from "@mui/material/Paper";
@@ -14,11 +14,13 @@ import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
 import EngineChip from "../components/EngineChip";
 import EngineExplainer from "../components/EngineExplainer";
+import ProjectNav from "../components/ProjectNav";
 import { ENGINE_A, ENGINE_B, ENGINE_SHORT_LABELS } from "../utils/engines";
 import { getDeadlineFeed } from "../api/compliance";
 
 /**
- * Every live deadline across both engines, in one list, soonest first.
+ * Every live deadline across both engines for THIS project, in one list,
+ * soonest first.
  *
  * This screen used to assemble itself client-side: fetch every project,
  * then every claim in every project, then one more request per claim for
@@ -27,7 +29,9 @@ import { getDeadlineFeed } from "../api/compliance";
  * could still only ever see events and claims, because compliance
  * obligations, Sub-Clause 3.7 determinations and Sub-Clause 3.5
  * instructions had nowhere to appear. It is now one request to
- * GET /compliance/deadlines, which computes and ranks the lot server-side.
+ * GET /compliance/deadlines?project_id=..., which computes and ranks the
+ * lot server-side, scoped to this project only - deadlines are never
+ * shown mixed across projects anywhere in this app.
  */
 
 const SEVERITY_COLORS = {
@@ -52,14 +56,16 @@ const WINDOWS = [
 ];
 
 function DeadlinesDashboardPage() {
+  const { projectId } = useParams();
   const [withinDays, setWithinDays] = useState(30);
   const [category, setCategory] = useState("");
   const [engine, setEngine] = useState("");
 
   const feedQuery = useQuery({
-    queryKey: ["deadlineFeed", withinDays],
+    queryKey: ["deadlineFeed", projectId, withinDays],
     queryFn: () =>
       getDeadlineFeed({
+        projectId,
         withinDays: withinDays === "" ? undefined : withinDays,
       }),
   });
@@ -77,6 +83,8 @@ function DeadlinesDashboardPage() {
 
   return (
     <Stack spacing={3}>
+      <ProjectNav projectId={projectId} active="deadlines" />
+
       <Typography variant="h4" fontWeight={700}>
         Deadlines
       </Typography>
@@ -148,8 +156,8 @@ function DeadlinesDashboardPage() {
       {items.length === 0 ? (
         <Paper sx={{ p: 3 }}>
           <Typography color="text.secondary">
-            Nothing falls due in this window. Widen it, or check the
-            compliance register on an individual project.
+            Nothing falls due in this window for this project. Widen it, or
+            check the Compliance tab for the full register.
           </Typography>
         </Paper>
       ) : (
@@ -192,7 +200,7 @@ function DeadlinesDashboardPage() {
                       </Typography>
                     </Stack>
                   }
-                  secondary={`${item.project_name} — ${item.stage_label} — due ${
+                  secondary={`${item.stage_label} — due ${
                     item.deadline
                   }${item.clause_code ? ` — ${item.clause_code}` : ""}`}
                 />

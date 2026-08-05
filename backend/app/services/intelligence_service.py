@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from sqlalchemy.orm import Session
 
 from app.repositories.intelligence_repository import (
@@ -10,12 +12,14 @@ from app.repositories.intelligence_repository import (
 def intelligence_search(
     db: Session,
     keyword: str,
+    project_id: UUID | None = None,
 ):
     results = []
 
     events = search_events(
         db,
         keyword,
+        project_id,
     )
 
     for event in events:
@@ -31,6 +35,7 @@ def intelligence_search(
     daily_logs = search_daily_logs(
         db,
         keyword,
+        project_id,
     )
 
     for daily_log in daily_logs:
@@ -46,6 +51,7 @@ def intelligence_search(
     evidences = search_evidence(
         db,
         keyword,
+        project_id,
     )
 
     for evidence in evidences:
