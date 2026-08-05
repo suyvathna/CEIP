@@ -236,6 +236,25 @@ COMPLIANCE_RULES: tuple[ObligationRule, ...] = (
             "no such requirement."
         ),
     ),
+    ObligationRule(
+        key="commencement_date_limit",
+        title="Commencement Date must occur",
+        clause_name="commencement_date_limit",
+        clause_title="Commencement of Works",
+        cadence=ObligationCadence.ONE_OFF,
+        anchor=MilestoneAnchor.LETTER_OF_ACCEPTANCE,
+        offset_days=28,
+        category=ObligationCategory.MOBILISATION,
+        owed_by=OwedBy.EMPLOYER,
+        description=(
+            "The Commencement Date shall be within 28 days after the "
+            "Contractor receives the Letter of Acceptance, unless "
+            "otherwise stated in the Contract Data. A milestone rather "
+            "than a submission - it exists on the register so a delayed "
+            "instruction to commence is visible before it quietly "
+            "becomes the Contractor's problem instead of the Employer's."
+        ),
+    ),
     # ---------------------------------------------------------------
     # Programme
     # ---------------------------------------------------------------
@@ -435,6 +454,41 @@ COMPLIANCE_RULES: tuple[ObligationRule, ...] = (
             "submission: after it passes the Engineer should issue the "
             "Performance Certificate, which in turn starts the Final "
             "Statement clock."
+        ),
+    ),
+    ObligationRule(
+        key="performance_certificate_issued",
+        title="Performance Certificate should be issued",
+        clause_name="performance_certificate",
+        clause_title="Performance Certificate",
+        cadence=ObligationCadence.ONE_OFF,
+        anchor=MilestoneAnchor.PERFORMANCE_CERTIFICATE,
+        offset_days=0,
+        category=ObligationCategory.COMPLETION,
+        owed_by=OwedBy.ENGINEER,
+        description=(
+            "The Engineer shall issue the Performance Certificate within "
+            "28 days after the latest of the expiry dates of the Defects "
+            "Notification Periods. A milestone rather than a submission: "
+            "it starts both the 21-day return of the Performance "
+            "Security (4.2.3) and the 56-day Final Statement clock "
+            "(14.11)."
+        ),
+    ),
+    ObligationRule(
+        key="return_of_performance_security",
+        title="Return the Performance Security to the Contractor",
+        clause_name="return_of_performance_security",
+        clause_title="Return of Performance Security",
+        cadence=ObligationCadence.ONE_OFF,
+        anchor=MilestoneAnchor.PERFORMANCE_CERTIFICATE,
+        offset_days=21,
+        category=ObligationCategory.COMPLETION,
+        owed_by=OwedBy.EMPLOYER,
+        description=(
+            "The Employer shall return the Performance Security to the "
+            "Contractor within 21 days after receiving a copy of the "
+            "Performance Certificate."
         ),
     ),
     ObligationRule(

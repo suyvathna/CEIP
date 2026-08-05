@@ -102,7 +102,11 @@ class PlannedObligation:
 
 def _milestone_date(project: Project, anchor: MilestoneAnchor) -> date | None:
     if anchor == MilestoneAnchor.COMMENCEMENT:
-        return project.planned_start
+        # Prefers the actual Sub-Clause 8.1 Commencement Date once it's
+        # known; falls back to the originally planned date beforehand, so
+        # the register isn't empty before actual commencement is
+        # recorded and re-dates itself the moment it is.
+        return getattr(project, "actual_commencement_date", None) or project.planned_start
     if anchor == MilestoneAnchor.LETTER_OF_ACCEPTANCE:
         # Falls back to nothing rather than to the Commencement Date: a
         # Performance Security deadline computed from the wrong milestone
@@ -111,7 +115,15 @@ def _milestone_date(project: Project, anchor: MilestoneAnchor) -> date | None:
     if anchor == MilestoneAnchor.TAKING_OVER:
         return getattr(project, "taking_over_date", None)
     if anchor == MilestoneAnchor.PERFORMANCE_CERTIFICATE:
-        return getattr(project, "performance_certificate_date", None)
+        # Computed rather than stored: taking_over_date + DNP + 28 days
+        # (Sub-Clause 11.9), same formula as
+        # ProjectResponse.performance_certificate_date. Falls back to
+        # nothing if the Taking-Over Certificate hasn't been entered yet.
+        taking_over = getattr(project, "taking_over_date", None)
+        if taking_over is None:
+            return None
+        dnp_days = getattr(project, "defects_notification_period_days", None) or 0
+        return taking_over + timedelta(days=dnp_days) + timedelta(days=28)
 
     return None
 

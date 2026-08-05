@@ -158,6 +158,17 @@ def update_milestones(
     for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(db_project, key, value)
 
+    # The Target Completion Date runs from the actual Commencement Date
+    # once it's known, not the originally planned one - re-derive
+    # planned_finish here so it never silently disagrees with the
+    # Compliance page's computed Target Completion Date, the same
+    # "never entered directly" guarantee create_project/update_project
+    # already give planned_finish.
+    if db_project.actual_commencement_date is not None:
+        db_project.planned_finish = _compute_completion_date(
+            db_project.actual_commencement_date, db_project.duration_days
+        )
+
     db.commit()
     db.refresh(db_project)
 

@@ -51,15 +51,11 @@ def _write_daily_log_sheet(sheet, report: dict):
     sheet.append([])
 
     sheet.append(["WEATHER REPORT"])
-    sheet.append(["Temp Low", "Temp High", "Temp Avg", "Precip. Since Midnight", "Humidity Avg", "Wind Avg"])
+    sheet.append(["Temp Avg", "Humidity Avg"])
     sheet.append(
         [
-            report.get("temp_low_c"),
-            report.get("temp_high_c"),
             report.get("temp_avg_c"),
-            report.get("precip_since_midnight_mm"),
             report.get("humidity_avg_pct"),
-            report.get("wind_avg_kmh"),
         ]
     )
     sheet.append([])
@@ -74,16 +70,17 @@ def _write_daily_log_sheet(sheet, report: dict):
 
     weather_obs = report.get("weather_observations") or []
     if weather_obs:
-        sheet.append(["OBSERVED WEATHER CONDITIONS"])
-        sheet.append(["Time", "Caused Delay?", "Sky", "Precipitation", "Wind", "Comments"])
+        evidence_by_id = {e.id: e for e in (report.get("evidence") or [])}
+        sheet.append(["RAIN RECORDS"])
+        sheet.append(["Start", "Finish", "Delay?", "Photo", "Comments"])
         for row in weather_obs:
+            photo_evidence = evidence_by_id.get(_get(row, "evidence_id"))
             sheet.append(
                 [
-                    str(_get(row, "observed_time") or ""),
+                    str(_get(row, "start_time") or ""),
+                    str(_get(row, "end_time") or ""),
                     "Yes" if _get(row, "caused_delay") else "No",
-                    _get(row, "sky"),
-                    _get(row, "precipitation"),
-                    _get(row, "wind"),
+                    (photo_evidence.caption or photo_evidence.filename) if photo_evidence else "",
                     _get(row, "comments"),
                 ]
             )

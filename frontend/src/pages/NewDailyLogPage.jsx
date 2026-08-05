@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import { createDailyLog, getDailyLog, updateDailyLog } from "../api/dailyLogs";
 import { todayLocalISODate } from "../utils/date";
 import RepeatableSectionTable from "../components/RepeatableSectionTable";
+import RainRecordsTable from "../components/RainRecordsTable";
 
 const HSE_CATEGORIES = [
   "Toolbox Talk", "Incident", "Near Miss", "PPE Violation",
@@ -11,18 +12,6 @@ const HSE_CATEGORIES = [
 
 const SNAPSHOT_TIMES = [
   "06:00 AM", "09:00 AM", "12:00 PM", "03:00 PM", "06:00 PM", "09:00 PM",
-];
-
-const WEATHER_OBSERVATION_COLUMNS = [
-  { key: "observed_time", label: "Time", type: "time" },
-  { key: "caused_delay", label: "Caused delay?", type: "checkbox" },
-  { key: "sky", label: "Sky", type: "text" },
-  { key: "temp_avg_c", label: "Temp (°C)", type: "number" },
-  { key: "precipitation", label: "Precipitation", type: "text" },
-  { key: "wind", label: "Wind", type: "text" },
-  { key: "ground_condition", label: "Ground condition", type: "text" },
-  { key: "calamity", label: "Calamity", type: "text" },
-  { key: "comments", label: "Comments", type: "text" },
 ];
 
 const MANPOWER_COLUMNS = [
@@ -83,10 +72,7 @@ const VISITOR_COLUMNS = [
 function emptyFlatState() {
   return {
     diary_date: todayLocalISODate(),
-    temp_low_c: "", temp_high_c: "", temp_avg_c: "",
-    precip_since_midnight_mm: "", precip_2_days_ago_mm: "", precip_3_days_ago_mm: "",
-    humidity_low_pct: "", humidity_avg_pct: "", humidity_high_pct: "",
-    dew_point_c: "", wind_avg_kmh: "", wind_max_kmh: "", wind_gust_kmh: "",
+    temp_avg_c: "", humidity_avg_pct: "",
     work_completed: "",
     delays: "",
     engineer_instruction: "",
@@ -152,12 +138,7 @@ function NewDailyLogPage() {
       .then((data) => {
         setFlat({
           diary_date: data.diary_date,
-          temp_low_c: data.temp_low_c ?? "", temp_high_c: data.temp_high_c ?? "", temp_avg_c: data.temp_avg_c ?? "",
-          precip_since_midnight_mm: data.precip_since_midnight_mm ?? "",
-          precip_2_days_ago_mm: data.precip_2_days_ago_mm ?? "",
-          precip_3_days_ago_mm: data.precip_3_days_ago_mm ?? "",
-          humidity_low_pct: data.humidity_low_pct ?? "", humidity_avg_pct: data.humidity_avg_pct ?? "", humidity_high_pct: data.humidity_high_pct ?? "",
-          dew_point_c: data.dew_point_c ?? "", wind_avg_kmh: data.wind_avg_kmh ?? "", wind_max_kmh: data.wind_max_kmh ?? "", wind_gust_kmh: data.wind_gust_kmh ?? "",
+          temp_avg_c: data.temp_avg_c ?? "", humidity_avg_pct: data.humidity_avg_pct ?? "",
           work_completed: data.work_completed ?? "",
           delays: data.delays ?? "",
           engineer_instruction: data.engineer_instruction ?? "",
@@ -172,7 +153,16 @@ function NewDailyLogPage() {
         setSnapshot(
           data.daily_snapshot?.length ? data.daily_snapshot : emptySnapshot()
         );
-        setWeatherObservations(data.weather_observations || []);
+        // evidence_id comes back as null (not "") for a row with no photo -
+        // normalize it to "" so cleanRows' "is this row blank?" check
+        // (which treats "" as unset but not null) works the same way for
+        // rows loaded from the server as for freshly-added ones.
+        setWeatherObservations(
+          (data.weather_observations || []).map((row) => ({
+            ...row,
+            evidence_id: row.evidence_id ?? "",
+          }))
+        );
         setManpowerEntries(data.manpower_entries || []);
         setEquipmentEntries(data.equipment_entries || []);
         setDeliveryEntries(data.delivery_entries || []);
@@ -201,23 +191,12 @@ function NewDailyLogPage() {
       ...flat,
       project_id: projectId,
       event_id: eventId || null,
-      temp_low_c: numOrNull(flat.temp_low_c),
-      temp_high_c: numOrNull(flat.temp_high_c),
       temp_avg_c: numOrNull(flat.temp_avg_c),
-      precip_since_midnight_mm: numOrNull(flat.precip_since_midnight_mm),
-      precip_2_days_ago_mm: numOrNull(flat.precip_2_days_ago_mm),
-      precip_3_days_ago_mm: numOrNull(flat.precip_3_days_ago_mm),
-      humidity_low_pct: numOrNull(flat.humidity_low_pct),
       humidity_avg_pct: numOrNull(flat.humidity_avg_pct),
-      humidity_high_pct: numOrNull(flat.humidity_high_pct),
-      dew_point_c: numOrNull(flat.dew_point_c),
-      wind_avg_kmh: numOrNull(flat.wind_avg_kmh),
-      wind_max_kmh: numOrNull(flat.wind_max_kmh),
-      wind_gust_kmh: numOrNull(flat.wind_gust_kmh),
       daily_snapshot: snapshot
         .filter((s) => s.condition || s.temp_c !== "")
         .map((s) => ({ ...s, temp_c: numOrNull(s.temp_c) })),
-      weather_observations: cleanRows(weatherObservations, ["temp_avg_c"]),
+      weather_observations: cleanRows(weatherObservations),
       manpower_entries: cleanRows(manpowerEntries, ["workers_count", "hours"]),
       equipment_entries: cleanRows(equipmentEntries, ["hours_operating", "hours_idle"]),
       delivery_entries: cleanRows(deliveryEntries),
@@ -258,19 +237,8 @@ function NewDailyLogPage() {
 
         <h2>Weather Report</h2>
         <div className="field-grid">
-          <label>Temp low (°C)<input type="number" step="any" name="temp_low_c" value={flat.temp_low_c} onChange={handleFlatChange} /></label>
-          <label>Temp high (°C)<input type="number" step="any" name="temp_high_c" value={flat.temp_high_c} onChange={handleFlatChange} /></label>
           <label>Temp avg (°C)<input type="number" step="any" name="temp_avg_c" value={flat.temp_avg_c} onChange={handleFlatChange} /></label>
-          <label>Precip since midnight (mm)<input type="number" step="any" name="precip_since_midnight_mm" value={flat.precip_since_midnight_mm} onChange={handleFlatChange} /></label>
-          <label>Precip 2 days ago (mm)<input type="number" step="any" name="precip_2_days_ago_mm" value={flat.precip_2_days_ago_mm} onChange={handleFlatChange} /></label>
-          <label>Precip 3 days ago (mm)<input type="number" step="any" name="precip_3_days_ago_mm" value={flat.precip_3_days_ago_mm} onChange={handleFlatChange} /></label>
-          <label>Humidity low (%)<input type="number" step="any" name="humidity_low_pct" value={flat.humidity_low_pct} onChange={handleFlatChange} /></label>
           <label>Humidity avg (%)<input type="number" step="any" name="humidity_avg_pct" value={flat.humidity_avg_pct} onChange={handleFlatChange} /></label>
-          <label>Humidity high (%)<input type="number" step="any" name="humidity_high_pct" value={flat.humidity_high_pct} onChange={handleFlatChange} /></label>
-          <label>Dew point (°C)<input type="number" step="any" name="dew_point_c" value={flat.dew_point_c} onChange={handleFlatChange} /></label>
-          <label>Wind avg (km/h)<input type="number" step="any" name="wind_avg_kmh" value={flat.wind_avg_kmh} onChange={handleFlatChange} /></label>
-          <label>Wind max (km/h)<input type="number" step="any" name="wind_max_kmh" value={flat.wind_max_kmh} onChange={handleFlatChange} /></label>
-          <label>Wind gust (km/h)<input type="number" step="any" name="wind_gust_kmh" value={flat.wind_gust_kmh} onChange={handleFlatChange} /></label>
         </div>
         <p className="form-hint">
           Filled in by hand for now - a future update can auto-fill this
@@ -307,13 +275,18 @@ function NewDailyLogPage() {
           </tbody>
         </table>
 
-        <h2>Observed Weather Conditions</h2>
-        <RepeatableSectionTable
-          columns={WEATHER_OBSERVATION_COLUMNS}
+        <h2>Rain Records</h2>
+        <RainRecordsTable
+          dailyLogId={isEdit ? dailyLogId : null}
           rows={weatherObservations}
           onChange={setWeatherObservations}
-          addLabel="+ Add observation"
         />
+        {!isEdit && (
+          <p className="form-hint">
+            Photos can be attached to a rain record once this entry is
+            saved.
+          </p>
+        )}
 
         <h2>Notes</h2>
         <label>

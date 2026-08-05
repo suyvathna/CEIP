@@ -1,6 +1,6 @@
 from datetime import date
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.db.session import get_db
@@ -28,6 +28,7 @@ from app.services.excel_service import (
 )
 from app.services.pdf_service import (
     generate_daily_log_pdf,
+    generate_daily_log_zip,
     generate_project_daily_log_compilation_pdf,
 )
 
@@ -70,27 +71,56 @@ def project_daily_log_report_pdf_endpoint(
     project_id: UUID,
     start_date: date | None = None,
     end_date: date | None = None,
+    dates: list[date] | None = Query(default=None),
+    separate: bool = False,
     db: Session = Depends(get_db),
 ):
     """
-    The Report tab's compiled Daily Log export - every Daily Log for this
-    project (optionally bounded to a date range), formatted to match the
-    reference site-log template, one day per section. This is the
-    day-by-day site record a Contractor would actually hand an Engineer
-    or DAAB alongside a claim.
+    The Report tab's day-picker Daily Log export - a contiguous range
+    (start_date/end_date), an explicit list of specific days (dates), or
+    (with neither) the whole project history, formatted to match the
+    reference site-log template. separate=True bundles one PDF per day
+    into a zip instead of one combined document - moot when only one day
+    ends up selected, since combined and separate are the same output
+    then. This is the day-by-day site record a Contractor would actually
+    hand an Engineer or DAAB alongside a claim.
     """
     project = db.get(Project, project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    reports = get_daily_reports_for_project(db, project_id, start_date, end_date)
-    pdf = generate_project_daily_log_compilation_pdf(reports, project.project_name)
+    reports = get_daily_reports_for_project(db, project_id, start_date, end_date, dates)
+
+    report_dates = [r["diary_date"] for r in reports]
+    earliest = min(report_dates) if report_dates else None
+    latest = max(report_dates) if report_dates else None
+    date_label = (
+        f"{earliest}_to_{latest}" if earliest != latest else f"{earliest or 'empty'}"
+    )
+
+    if separate and len(reports) > 1:
+        zip_buffer = generate_daily_log_zip(reports, project.project_code, project.project_name)
+        return StreamingResponse(
+            zip_buffer,
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": f'attachment; filename="{project.project_code}-DL-{date_label}.zip"'
+            },
+        )
+
+    # A single selected day gets the plain single-day document rather
+    # than the "N day(s) included" compilation wrapper - combine/separate
+    # are indistinguishable in that case, so the output should be too.
+    if len(reports) == 1:
+        pdf = generate_daily_log_pdf(reports[0], project.project_name)
+    else:
+        pdf = generate_project_daily_log_compilation_pdf(reports, project.project_name)
 
     return StreamingResponse(
         pdf,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f'inline; filename="daily_log_compilation_{project_id}.pdf"'
+            "Content-Disposition": f'inline; filename="{project.project_code}-DL-{date_label}.pdf"'
         },
     )
 
@@ -200,12 +230,16 @@ def daily_log_report_pdf_endpoint(
     project = db.get(Project, report["project_id"])
     pdf = generate_daily_log_pdf(report, project.project_name if project else None)
 
+    filename = (
+        f"{project.project_code}-DL-{report['diary_date']}.pdf"
+        if project
+        else f"daily_log_{daily_log_id}.pdf"
+    )
+
     return StreamingResponse(
         pdf,
         media_type="application/pdf",
-        headers={
-            "Content-Disposition": f'inline; filename="daily_log_{daily_log_id}.pdf"'
-        },
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
     )
 
 

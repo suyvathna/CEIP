@@ -22,6 +22,8 @@ const initialFormState = {
   // schema) can never accidentally blank a milestone that isn't on that
   // form (see ProjectMilestonesUpdate's docstring in schemas/project.py).
   letter_of_acceptance_date: "",
+  actual_commencement_date: "",
+  defects_notification_period_days: 365,
   currency: "USD",
   contract_value: "",
   // FIDIC 2017 Sub-Clause 20.2 default periods (days). These are
@@ -33,6 +35,11 @@ const initialFormState = {
   detailed_claim_period_days: 84,
   engineer_late_notice_flag_days: 14,
   engineer_response_period_days: 42,
+  // Also milestone-pattern fields (see letter_of_acceptance_date above) -
+  // sent through the same second call rather than ProjectCreate.
+  progress_report_due_days: 7,
+  statement_due_days: 7,
+  compliance_alert_lead_days: 7,
 };
 
 // Local preview only - the authoritative completion date is always
@@ -63,12 +70,20 @@ function NewProjectPage() {
     setSubmitting(true);
     setError(null);
     try {
-      // letter_of_acceptance_date is deliberately NOT part of
-      // ProjectCreate (see the field's comment above) - it goes through
-      // the same milestones PATCH the Compliance tab uses, as a second
-      // call right after creation, so this form's only job is to save
-      // the PM a trip back to Compliance to set it.
-      const { letter_of_acceptance_date, ...projectFields } = formData;
+      // These fields are deliberately NOT part of ProjectCreate (see the
+      // field's comment above) - they go through the same milestones
+      // PATCH the Compliance tab's register reads from, as a second call
+      // right after creation, so this form's only job is to save the PM
+      // a trip back to Compliance to set them.
+      const {
+        letter_of_acceptance_date,
+        actual_commencement_date,
+        defects_notification_period_days,
+        progress_report_due_days,
+        statement_due_days,
+        compliance_alert_lead_days,
+        ...projectFields
+      } = formData;
 
       const newProject = await createProject({
         ...projectFields,
@@ -80,9 +95,14 @@ function NewProjectPage() {
         engineer_response_period_days: Number(formData.engineer_response_period_days),
       });
 
-      if (letter_of_acceptance_date) {
-        await updateProjectMilestones(newProject.id, { letter_of_acceptance_date });
-      }
+      await updateProjectMilestones(newProject.id, {
+        ...(letter_of_acceptance_date ? { letter_of_acceptance_date } : {}),
+        ...(actual_commencement_date ? { actual_commencement_date } : {}),
+        defects_notification_period_days: Number(defects_notification_period_days),
+        progress_report_due_days: Number(progress_report_due_days),
+        statement_due_days: Number(statement_due_days),
+        compliance_alert_lead_days: Number(compliance_alert_lead_days),
+      });
 
       navigate(`/projects/${newProject.id}`);
     } catch (err) {
@@ -152,38 +172,6 @@ function NewProjectPage() {
           <input name="city" value={formData.city} onChange={handleChange} required />
         </label>
         <label>
-          Commencement date
-          <input type="date" name="planned_start" value={formData.planned_start} onChange={handleChange} required />
-        </label>
-        <label>
-          Letter of Acceptance date (if already issued)
-          <input
-            type="date"
-            name="letter_of_acceptance_date"
-            value={formData.letter_of_acceptance_date}
-            onChange={handleChange}
-          />
-        </label>
-        <p className="form-hint">
-          Letter of Acceptance starts the 28-day Performance Security
-          (4.2) and Advance Payment guarantee (14.2) clocks. Leave blank
-          if not yet issued — set it later from the Compliance tab.
-        </p>
-        <label>
-          Time for Completion (days)
-          <input
-            type="number"
-            min="1"
-            name="duration_days"
-            value={formData.duration_days}
-            onChange={handleChange}
-            required
-          />
-        </label>
-        {completionPreview && (
-          <p className="form-hint">Completion date: {completionPreview}</p>
-        )}
-        <label>
           Currency
           <select name="currency" value={formData.currency} onChange={handleChange}>
             {CURRENCIES.map((c) => (
@@ -205,13 +193,74 @@ function NewProjectPage() {
         </label>
 
         <fieldset>
+          <legend>Contract Milestones &amp; Periods</legend>
+          <label>
+            Commencement date
+            <input type="date" name="planned_start" value={formData.planned_start} onChange={handleChange} required />
+          </label>
+          <label>
+            Actual Commencement Date (8.1)
+            <input
+              type="date"
+              name="actual_commencement_date"
+              value={formData.actual_commencement_date}
+              onChange={handleChange}
+            />
+          </label>
+          <p className="form-hint">
+            Leave blank until work genuinely starts on Site - once set, the
+            Target Completion Date and the Initial Programme deadline
+            re-date from this instead of the Commencement date above.
+          </p>
+          <label>
+            Letter of Acceptance (LOA) (1.1.51)
+            <input
+              type="date"
+              name="letter_of_acceptance_date"
+              value={formData.letter_of_acceptance_date}
+              onChange={handleChange}
+            />
+          </label>
+          <p className="form-hint">
+            Starts the 28-day Performance Security (4.2) and Advance
+            Payment guarantee (14.2) clocks. Leave blank if not yet
+            issued — set it later from Edit Project.
+          </p>
+          <label>
+            Time for Completion (Days)
+            <input
+              type="number"
+              min="1"
+              name="duration_days"
+              value={formData.duration_days}
+              onChange={handleChange}
+              required
+            />
+          </label>
+          {completionPreview && (
+            <p className="form-hint">Completion date: {completionPreview}</p>
+          )}
+          <label>
+            Defects Notification Period DNP (Days)
+            <input
+              type="number"
+              min="1"
+              name="defects_notification_period_days"
+              value={formData.defects_notification_period_days}
+              onChange={handleChange}
+              required
+            />
+          </label>
+        </fieldset>
+
+        <fieldset>
           <legend>
-            FIDIC Sub-Clause 20.2 claim periods (days) - defaults are the
+            FIDIC subclause claim periods (days) - defaults are the
             unamended FIDIC 2017 Red Book; override if the Particular
             Conditions amend them
           </legend>
           <label>
-            Notice of Claim period (20.2.1)
+            Notice of claim period (20.2.1)
             <input type="number" min="1" name="notice_period_days" value={formData.notice_period_days} onChange={handleChange} required />
           </label>
           <label>
@@ -225,6 +274,43 @@ function NewProjectPage() {
           <label>
             Engineer's response period (20.2.5)
             <input type="number" min="1" name="engineer_response_period_days" value={formData.engineer_response_period_days} onChange={handleChange} required />
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Other periods</legend>
+          <label>
+            Progress report due (days after month end)
+            <input
+              type="number"
+              min="1"
+              name="progress_report_due_days"
+              value={formData.progress_report_due_days}
+              onChange={handleChange}
+              required
+            />
+          </label>
+          <label>
+            Statement due (days after month end)
+            <input
+              type="number"
+              min="1"
+              name="statement_due_days"
+              value={formData.statement_due_days}
+              onChange={handleChange}
+              required
+            />
+          </label>
+          <label>
+            Alert lead time (days)
+            <input
+              type="number"
+              min="1"
+              name="compliance_alert_lead_days"
+              value={formData.compliance_alert_lead_days}
+              onChange={handleChange}
+              required
+            />
           </label>
         </fieldset>
 

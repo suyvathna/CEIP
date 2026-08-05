@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, computed_field
@@ -77,12 +77,17 @@ class ProjectMilestonesUpdate(BaseModel):
     # Security (4.2) and the Advance Payment guarantee (14.2).
     letter_of_acceptance_date: date | None = None
 
-    # Sub-Clause 10.1. Starts the 84-day Statement at Completion clock
-    # (14.10) and the Defects Notification Period.
-    taking_over_date: date | None = None
+    # Sub-Clause 8.1, entered once work genuinely starts. Falls back to
+    # planned_start for anchoring until it's set - see
+    # compliance_service._milestone_date.
+    actual_commencement_date: date | None = None
 
-    # Sub-Clause 11.9. Starts the 56-day Final Statement clock (14.11).
-    performance_certificate_date: date | None = None
+    # Sub-Clause 10.1 - "Actual TOC Date" in the UI. Starts the 84-day
+    # Statement at Completion clock (14.10) and the Defects Notification
+    # Period. The one milestone here that's still a manual input - every
+    # other date in this schema used to be one too, but is now computed
+    # (see ProjectResponse's computed fields) and no longer accepted here.
+    taking_over_date: date | None = None
 
     defects_notification_period_days: int | None = None
     progress_report_due_days: int | None = None
@@ -106,8 +111,8 @@ class ProjectResponse(ProjectCreate):
     # body. See ProjectMilestonesUpdate.
     contract_edition: str = "FIDIC 2017"
     letter_of_acceptance_date: date | None = None
+    actual_commencement_date: date | None = None
     taking_over_date: date | None = None
-    performance_certificate_date: date | None = None
     defects_notification_period_days: int = 365
     progress_report_due_days: int = 7
     statement_due_days: int = 7
@@ -133,3 +138,86 @@ class ProjectResponse(ProjectCreate):
         if not self.is_overdue:
             return 0
         return (date.today() - self.planned_finish).days
+
+    # --- Computed contract milestones & periods ------------------------
+    # Mirrors the anchor/offset math in
+    # app.services.compliance_service._milestone_date and
+    # app.constants.compliance_rules exactly, so the Compliance page's
+    # summary panel can never drift from what the register actually
+    # generates. Each returns None rather than guessing when its source
+    # date is missing - same "absent is better than confidently
+    # incorrect" rule the register itself follows.
+
+    @computed_field
+    @property
+    def performance_security_submission_date(self) -> date | None:
+        """Sub-Clause 4.2.1: LOA + 28 days."""
+        if self.letter_of_acceptance_date is None:
+            return None
+        return self.letter_of_acceptance_date + timedelta(days=28)
+
+    @computed_field
+    @property
+    def commencement_date_limit(self) -> date | None:
+        """Sub-Clause 8.1: LOA + 28 days."""
+        if self.letter_of_acceptance_date is None:
+            return None
+        return self.letter_of_acceptance_date + timedelta(days=28)
+
+    @computed_field
+    @property
+    def initial_programme_submission_date(self) -> date | None:
+        """Sub-Clause 8.3: Commencement Date + 28 days."""
+        commencement = self.actual_commencement_date or self.planned_start
+        if commencement is None:
+            return None
+        return commencement + timedelta(days=28)
+
+    @computed_field
+    @property
+    def target_completion_date(self) -> date | None:
+        """Commencement Date + Time for Completion - always planned_finish."""
+        return self.planned_finish
+
+    @computed_field
+    @property
+    def statement_at_completion_due(self) -> date | None:
+        """Sub-Clause 14.10: Actual TOC Date + 84 days."""
+        if self.taking_over_date is None:
+            return None
+        return self.taking_over_date + timedelta(days=84)
+
+    @computed_field
+    @property
+    def dnp_expiry_date(self) -> date | None:
+        """Sub-Clause 11.1: Actual TOC Date + DNP (days)."""
+        if self.taking_over_date is None:
+            return None
+        return self.taking_over_date + timedelta(days=self.defects_notification_period_days)
+
+    @computed_field
+    @property
+    def performance_certificate_date(self) -> date | None:
+        """Sub-Clause 11.9: DNP Expiry Date + 28 days."""
+        expiry = self.dnp_expiry_date
+        if expiry is None:
+            return None
+        return expiry + timedelta(days=28)
+
+    @computed_field
+    @property
+    def return_of_performance_security_date(self) -> date | None:
+        """Sub-Clause 4.2.3: Performance Certificate Date + 21 days."""
+        certificate = self.performance_certificate_date
+        if certificate is None:
+            return None
+        return certificate + timedelta(days=21)
+
+    @computed_field
+    @property
+    def final_statement_submission_due_date(self) -> date | None:
+        """Sub-Clause 14.11.1: Performance Certificate Date + 56 days."""
+        certificate = self.performance_certificate_date
+        if certificate is None:
+            return None
+        return certificate + timedelta(days=56)

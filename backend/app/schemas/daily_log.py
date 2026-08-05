@@ -12,17 +12,13 @@ class DailySnapshotSlot(BaseModel):
     temp_c: float | None = None
 
 
-# --- Observed Weather Conditions --------------------------------------------
+# --- Rain Records --------------------------------------------------------
 
 class WeatherObservationCreate(BaseModel):
-    observed_time: time | None = None
+    start_time: time | None = None
+    end_time: time | None = None
     caused_delay: bool = False
-    sky: str | None = None
-    temp_avg_c: float | None = None
-    precipitation: str | None = None
-    wind: str | None = None
-    ground_condition: str | None = None
-    calamity: str | None = None
+    evidence_id: UUID | None = None
     comments: str | None = None
 
 
@@ -136,19 +132,8 @@ class DailyLogCreate(BaseModel):
     diary_date: date
 
     # Weather Report
-    temp_low_c: float | None = None
-    temp_high_c: float | None = None
     temp_avg_c: float | None = None
-    precip_since_midnight_mm: float | None = None
-    precip_2_days_ago_mm: float | None = None
-    precip_3_days_ago_mm: float | None = None
-    humidity_low_pct: int | None = None
     humidity_avg_pct: int | None = None
-    humidity_high_pct: int | None = None
-    dew_point_c: float | None = None
-    wind_avg_kmh: float | None = None
-    wind_max_kmh: float | None = None
-    wind_gust_kmh: float | None = None
 
     daily_snapshot: list[DailySnapshotSlot] = []
 
@@ -185,19 +170,8 @@ class DailyLogResponse(BaseModel):
     event_id: UUID | None
     diary_date: date
 
-    temp_low_c: float | None
-    temp_high_c: float | None
     temp_avg_c: float | None
-    precip_since_midnight_mm: float | None
-    precip_2_days_ago_mm: float | None
-    precip_3_days_ago_mm: float | None
-    humidity_low_pct: int | None
     humidity_avg_pct: int | None
-    humidity_high_pct: int | None
-    dew_point_c: float | None
-    wind_avg_kmh: float | None
-    wind_max_kmh: float | None
-    wind_gust_kmh: float | None
 
     # Nullable in the database (any Daily Log row that predates this field -
     # i.e. every diary entry migrated from the old flat schema - has NULL

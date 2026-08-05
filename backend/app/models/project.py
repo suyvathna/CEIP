@@ -47,6 +47,14 @@ class Project(Base):
     # project_service.py) so the two can never silently disagree.
     planned_start: Mapped[date] = mapped_column(Date)
 
+    # The actual Sub-Clause 8.1 Commencement Date, entered once work
+    # genuinely starts. Distinct from planned_start (the originally
+    # planned date, always known at creation): several obligations
+    # (initial Programme, Target Completion) run from this once it's
+    # known, falling back to planned_start beforehand - see
+    # compliance_service._milestone_date.
+    actual_commencement_date: Mapped[date | None] = mapped_column(Date)
+
     planned_finish: Mapped[date] = mapped_column(Date)
 
     # Time for Completion (Sub-Clause 8.2), in days from the Commencement
@@ -134,12 +142,18 @@ class Project(Base):
     # Security (Sub-Clause 4.2) and the Advance Payment guarantee (14.2).
     letter_of_acceptance_date: Mapped[date | None] = mapped_column(Date)
 
-    # Sub-Clause 10.1 Taking-Over Certificate. Starts the 84-day Statement
-    # at Completion clock (14.10) and the Defects Notification Period.
+    # Sub-Clause 10.1 Taking-Over Certificate - "Actual TOC Date" in the
+    # UI. Starts the 84-day Statement at Completion clock (14.10) and the
+    # Defects Notification Period. The one contract milestone that
+    # genuinely can't be computed from anything else, so it stays a
+    # manual input on the Compliance page.
     taking_over_date: Mapped[date | None] = mapped_column(Date)
 
-    # Sub-Clause 11.9. Starts the 56-day Final Statement clock (14.11) -
-    # the last door in the contract.
+    # Sub-Clause 11.9. No longer written to - the Performance Certificate
+    # date is now computed (taking_over_date + DNP + 28, see
+    # compliance_service._milestone_date) rather than entered directly,
+    # same reasoning as planned_finish. Column kept rather than dropped to
+    # avoid a destructive migration for a field with no reader left.
     performance_certificate_date: Mapped[date | None] = mapped_column(Date)
 
     defects_notification_period_days: Mapped[int] = mapped_column(

@@ -317,23 +317,28 @@ def get_daily_reports_for_project(
     project_id: UUID,
     start_date=None,
     end_date=None,
+    dates=None,
 ):
     """
     Every Daily Log for a project, in the same shape get_daily_report
     returns for one - the data source for the Report tab's compiled
-    Daily Log PDF/Excel export. Optionally bounded to a date range so a
-    Contractor can pull "this week" or "this month" instead of the whole
-    project history every time.
+    Daily Log PDF/Excel export. Bounded either to a contiguous date range
+    (start_date/end_date - "this week", "this month") or to an explicit
+    list of specific, possibly non-contiguous dates (dates - "just these
+    three days"). dates wins if both are given.
     """
     stmt = (
         select(DailyLog)
         .where(DailyLog.project_id == project_id)
         .order_by(DailyLog.diary_date)
     )
-    if start_date is not None:
-        stmt = stmt.where(DailyLog.diary_date >= start_date)
-    if end_date is not None:
-        stmt = stmt.where(DailyLog.diary_date <= end_date)
+    if dates:
+        stmt = stmt.where(DailyLog.diary_date.in_(dates))
+    else:
+        if start_date is not None:
+            stmt = stmt.where(DailyLog.diary_date >= start_date)
+        if end_date is not None:
+            stmt = stmt.where(DailyLog.diary_date <= end_date)
 
     logs = db.scalars(stmt).all()
     return [get_daily_report(db, log.id) for log in logs]

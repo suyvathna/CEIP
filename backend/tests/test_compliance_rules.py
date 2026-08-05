@@ -29,10 +29,10 @@ def make_project(**overrides):
     defaults = dict(
         planned_start=date(2026, 1, 1),
         planned_finish=date(2026, 12, 31),
+        actual_commencement_date=None,
         contract_edition=ContractEdition.FIDIC_2017.value,
         letter_of_acceptance_date=None,
         taking_over_date=None,
-        performance_certificate_date=None,
         defects_notification_period_days=365,
         progress_report_due_days=7,
         statement_due_days=7,
@@ -98,10 +98,55 @@ def test_statement_at_completion_is_84_days_after_taking_over():
 
 
 def test_final_statement_is_56_days_after_the_performance_certificate():
-    project = make_project(performance_certificate_date=date(2027, 7, 1))
+    # Performance Certificate date is computed (taking_over_date + DNP +
+    # 28 days), not stored - see _milestone_date. 2026-06-03 + 365 (the
+    # default DNP) + 28 = 2027-07-01.
+    project = make_project(taking_over_date=date(2026, 6, 3))
     plans = plan_index(project, today=date(2027, 7, 2))
 
     assert plans[("final_statement", "once")].due_date == date(2027, 8, 26)
+
+
+def test_performance_certificate_issued_is_computed_from_taking_over_and_dnp():
+    project = make_project(
+        taking_over_date=date(2026, 6, 3), defects_notification_period_days=365
+    )
+    plans = plan_index(project, today=date(2027, 7, 2))
+
+    assert plans[("performance_certificate_issued", "once")].due_date == date(
+        2027, 7, 1
+    )
+
+
+def test_return_of_performance_security_is_21_days_after_the_performance_certificate():
+    project = make_project(taking_over_date=date(2026, 6, 3))
+    plans = plan_index(project, today=date(2027, 7, 2))
+
+    assert plans[("return_of_performance_security", "once")].due_date == date(
+        2027, 7, 22
+    )
+
+
+def test_no_taking_over_date_means_no_performance_certificate_obligations():
+    plans = plan_index(make_project(), today=date(2026, 2, 1))
+
+    assert ("performance_certificate_issued", "once") not in plans
+    assert ("return_of_performance_security", "once") not in plans
+    assert ("final_statement", "once") not in plans
+
+
+def test_commencement_date_limit_is_28_days_after_the_letter_of_acceptance():
+    project = make_project(letter_of_acceptance_date=date(2026, 1, 5))
+    plans = plan_index(project, today=date(2026, 2, 1))
+
+    assert plans[("commencement_date_limit", "once")].due_date == date(2026, 2, 2)
+
+
+def test_initial_programme_uses_actual_commencement_date_once_set():
+    project = make_project(actual_commencement_date=date(2026, 3, 1))
+    plans = plan_index(project, today=date(2026, 4, 1))
+
+    assert plans[("initial_programme", "once")].due_date == date(2026, 3, 29)
 
 
 def test_defects_notification_period_end_uses_the_project_configured_length():

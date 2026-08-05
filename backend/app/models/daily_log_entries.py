@@ -21,11 +21,17 @@ from app.db.base import Base
 
 class WeatherObservation(Base):
     """
-    "Observed Weather Conditions" - a same-day, timestamped log of what
-    actually happened on site (as opposed to the forecast-style Weather
-    Report/Daily Snapshot above it). caused_delay is the field that
-    matters most for a claim: it's what turns a weather note into
-    corroboration for a Sub-Clause 8.5(c) adverse-weather EOT ground.
+    "Rain Records" - a timestamped log of actual rain events on site, each
+    with a start/finish time and an optional photo. caused_delay is the
+    field that matters most for a claim: it's what turns a rain record
+    into corroboration for a Sub-Clause 8.5(c) adverse-weather EOT ground.
+
+    evidence_id points *to* the Evidence row for this record's photo,
+    deliberately not the other way around: daily_log_service._replace_children
+    deletes and re-inserts every row here on every DailyLog save, so a
+    value carried ON this row (round-tripped by the frontend) survives
+    that, whereas an Evidence row pointing back at a specific
+    WeatherObservation.id would go stale the moment the log is next edited.
     """
 
     __tablename__ = "daily_log_weather_observations"
@@ -33,14 +39,12 @@ class WeatherObservation(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     daily_log_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("daily_logs.id", ondelete="CASCADE"), nullable=False)
 
-    observed_time: Mapped[time | None] = mapped_column(Time)
+    start_time: Mapped[time | None] = mapped_column(Time)
+    end_time: Mapped[time | None] = mapped_column(Time)
     caused_delay: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
-    sky: Mapped[str | None] = mapped_column(String(100))
-    temp_avg_c: Mapped[float | None] = mapped_column(Numeric(4, 1))
-    precipitation: Mapped[str | None] = mapped_column(String(100))
-    wind: Mapped[str | None] = mapped_column(String(100))
-    ground_condition: Mapped[str | None] = mapped_column(String(100))
-    calamity: Mapped[str | None] = mapped_column(String(100))
+    evidence_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("evidence.id", ondelete="SET NULL")
+    )
     comments: Mapped[str | None] = mapped_column(Text)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

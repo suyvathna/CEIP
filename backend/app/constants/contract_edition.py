@@ -98,6 +98,14 @@ CLAUSE_NUMBERS: dict[str, dict[ContractEdition, str]] = {
         ContractEdition.FIDIC_2017: "Sub-Clause 11.9",
         ContractEdition.FIDIC_1999: "Sub-Clause 11.9",
     },
+    "commencement_date_limit": {
+        ContractEdition.FIDIC_2017: "Sub-Clause 8.1",
+        ContractEdition.FIDIC_1999: "Sub-Clause 8.1",
+    },
+    "return_of_performance_security": {
+        ContractEdition.FIDIC_2017: "Sub-Clause 4.2.3",
+        ContractEdition.FIDIC_1999: "Sub-Clause 4.2",
+    },
     "right_to_vary": {
         ContractEdition.FIDIC_2017: "Sub-Clause 13.1",
         ContractEdition.FIDIC_1999: "Sub-Clause 13.1",

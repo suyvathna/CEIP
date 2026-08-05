@@ -1,3 +1,4 @@
+import zipfile
 from io import BytesIO
 
 from reportlab.lib import colors
@@ -13,6 +14,7 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
+from reportlab.platypus.flowables import Flowable
 
 from app.services.storage_service import download_file
 
@@ -125,8 +127,11 @@ def _styled_table(rows, col_widths=None):
     fact description or comment doesn't just run off the page edge.
     """
     styles = getSampleStyleSheet()
+    # A cell may already be a flowable (e.g. an Image thumbnail in a
+    # Photo column) rather than plain text - only wrap what isn't.
     wrapped = [
-        [Paragraph(str(cell), styles["Normal"]) for cell in row] for row in rows
+        [cell if isinstance(cell, Flowable) else Paragraph(str(cell), styles["Normal"]) for cell in row]
+        for row in rows
     ]
     table = Table(wrapped, colWidths=col_widths, repeatRows=1)
     table.setStyle(
@@ -312,7 +317,7 @@ def _fetch_thumbnail(evidence, max_width=5 * cm):
     A report generator should never 500 because one photo couldn't be
     fetched.
     """
-    if not evidence.content_type or not evidence.content_type.startswith("image/"):
+    if evidence is None or not evidence.content_type or not evidence.content_type.startswith("image/"):
         return None
 
     try:
@@ -349,17 +354,13 @@ def _daily_log_flowables(report: dict, styles, embed_photos: bool = True) -> lis
     story.append(
         _styled_table(
             [
-                ["Temp Low", "Temp High", "Temp Avg", "Precip. Since Midnight", "Humidity Avg", "Wind Avg"],
+                ["Temp Avg", "Humidity Avg"],
                 [
-                    _v(report.get("temp_low_c")),
-                    _v(report.get("temp_high_c")),
                     _v(report.get("temp_avg_c")),
-                    _v(report.get("precip_since_midnight_mm")),
                     _v(report.get("humidity_avg_pct")),
-                    _v(report.get("wind_avg_kmh")),
                 ],
             ],
-            col_widths=[2.8 * cm] * 6,
+            col_widths=[3.5 * cm] * 2,
         )
     )
     story.append(Spacer(1, 0.4 * cm))
@@ -383,20 +384,26 @@ def _daily_log_flowables(report: dict, styles, embed_photos: bool = True) -> lis
 
     weather_obs = report.get("weather_observations") or []
     if weather_obs:
-        story.append(Paragraph("Observed Weather Conditions", styles["Heading3"]))
-        rows = [["Time", "Caused Delay?", "Sky", "Precipitation", "Wind", "Comments"]]
+        story.append(Paragraph("Rain Records", styles["Heading3"]))
+        evidence_by_id = {e.id: e for e in (report.get("evidence") or [])}
+        rows = [["Start", "Finish", "Delay?", "Photo", "Comments"]]
         for obs in weather_obs:
+            get = obs.get if isinstance(obs, dict) else lambda k: getattr(obs, k)
+            photo_evidence = evidence_by_id.get(get("evidence_id"))
+            photo_cell = (
+                (_fetch_thumbnail(photo_evidence, max_width=2.5 * cm) if embed_photos else None)
+                or "—"
+            )
             rows.append(
                 [
-                    _v(obs.get("observed_time") if isinstance(obs, dict) else obs.observed_time),
-                    "Yes" if (obs.get("caused_delay") if isinstance(obs, dict) else obs.caused_delay) else "No",
-                    _v(obs.get("sky") if isinstance(obs, dict) else obs.sky),
-                    _v(obs.get("precipitation") if isinstance(obs, dict) else obs.precipitation),
-                    _v(obs.get("wind") if isinstance(obs, dict) else obs.wind),
-                    _v(obs.get("comments") if isinstance(obs, dict) else obs.comments),
+                    _v(get("start_time")),
+                    _v(get("end_time")),
+                    "Yes" if get("caused_delay") else "No",
+                    photo_cell,
+                    _v(get("comments")),
                 ]
             )
-        story.append(_styled_table(rows, col_widths=[2 * cm, 2.5 * cm, 2.5 * cm, 3 * cm, 2.5 * cm, 4 * cm]))
+        story.append(_styled_table(rows, col_widths=[2 * cm, 2 * cm, 2 * cm, 3 * cm, 6 * cm]))
         story.append(Spacer(1, 0.4 * cm))
 
     notes_fields = [
@@ -616,5 +623,23 @@ def generate_project_daily_log_compilation_pdf(
         story.append(Paragraph("No Daily Log entries in this date range.", styles["Normal"]))
 
     doc.build(story)
+    buffer.seek(0)
+    return buffer
+
+
+def generate_daily_log_zip(reports: list, project_code: str, project_name: str | None = None):
+    """
+    The "export separately" option on the Report tab's day picker - one
+    PDF per selected day (via generate_daily_log_pdf), bundled into a
+    single in-memory zip so a multi-day selection is still a one-click
+    download. Each entry is named the same way a single-day download
+    would be: "{project_code}-DL-{diary_date}.pdf".
+    """
+    buffer = BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        for report in reports:
+            pdf = generate_daily_log_pdf(report, project_name)
+            archive.writestr(f"{project_code}-DL-{report['diary_date']}.pdf", pdf.read())
+
     buffer.seek(0)
     return buffer

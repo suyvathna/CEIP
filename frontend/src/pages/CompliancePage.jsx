@@ -7,6 +7,7 @@ import Paper from "@mui/material/Paper";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import Alert from "@mui/material/Alert";
+import Divider from "@mui/material/Divider";
 import CircularProgress from "@mui/material/CircularProgress";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -31,9 +32,6 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import ProjectNav from "../components/ProjectNav";
-import EngineChip from "../components/EngineChip";
-import EngineExplainer from "../components/EngineExplainer";
-import { ENGINE_A } from "../utils/engines";
 import { todayLocalISODate } from "../utils/date";
 import {
   getComplianceRegister,
@@ -73,75 +71,38 @@ const OWED_BY_COLORS = {
   Employer: "secondary",
 };
 
-const MILESTONE_FIELDS = [
-  {
-    name: "letter_of_acceptance_date",
-    label: "Letter of Acceptance",
-    type: "date",
-    help: "Starts the 28-day Performance Security (4.2) and Advance Payment guarantee (14.2) clocks.",
-  },
-  {
-    name: "taking_over_date",
-    label: "Taking-Over Certificate (10.1)",
-    type: "date",
-    help: "Starts the 84-day Statement at Completion (14.10) and the Defects Notification Period. Also closes out the monthly obligations after it.",
-  },
-  {
-    name: "performance_certificate_date",
-    label: "Performance Certificate (11.9)",
-    type: "date",
-    help: "Starts the 56-day Final Statement clock (14.11) — the last door in the contract.",
-  },
-  {
-    name: "defects_notification_period_days",
-    label: "Defects Notification Period (days)",
-    type: "number",
-  },
-  {
-    name: "progress_report_due_days",
-    label: "Progress report due (days after month end)",
-    type: "number",
-    help: "FIDIC fixes 7. Particular Conditions often change it.",
-  },
-  {
-    name: "statement_due_days",
-    label: "Statement due (days after month end)",
-    type: "number",
-    help: "The General Conditions fix no day for the monthly Statement, so set this to match what your contract or the Engineer's agreed procedure actually requires.",
-  },
-  {
-    name: "compliance_alert_lead_days",
-    label: "Alert lead time (days)",
-    type: "number",
-    help: "How far ahead of a deadline both engines start alerting.",
-  },
+// The Compliance page's summary of contract milestones is a read-only
+// mirror of the computed fields ProjectResponse exposes (see
+// backend/app/schemas/project.py) - every row here is derived from the
+// periods set on Project Creation, using the same formulas the register
+// itself generates obligations from, so the two can never show different
+// numbers for the same deadline.
+const COMPUTED_MILESTONE_ROWS = [
+  { key: "performance_security_submission_date", label: "Performance Security Submission (4.2.1)" },
+  { key: "commencement_date_limit", label: "Commencement Date Limit (8.1)" },
+  { key: "initial_programme_submission_date", label: "Initial Programme Submission (8.3)" },
+  { key: "target_completion_date", label: "Target Completion Date" },
+  { key: "statement_at_completion_due", label: "Statement at Completion Due" },
+  { key: "dnp_expiry_date", label: "DNP Expiry Date" },
+  { key: "performance_certificate_date", label: "Performance Certificate Date (11.9)" },
+  { key: "return_of_performance_security_date", label: "Return of Performance Security (4.2.3)" },
+  { key: "final_statement_submission_due_date", label: "Final Statement Submission Due (14.11.1)" },
 ];
 
 function MilestonePanel({ projectId, project }) {
   const queryClient = useQueryClient();
-  const [form, setForm] = useState(null);
   const [error, setError] = useState(null);
-
-  const values =
-    form ||
-    Object.fromEntries(
-      MILESTONE_FIELDS.map((field) => [
-        field.name,
-        project?.[field.name] ?? (field.type === "number" ? 0 : ""),
-      ]).concat([["contract_edition", project?.contract_edition || "FIDIC 2017"]])
-    );
 
   const mutation = useMutation({
     mutationFn: (payload) => updateProjectMilestones(projectId, payload),
     onSuccess: () => {
-      setForm(null);
       setError(null);
       queryClient.invalidateQueries({ queryKey: ["project", projectId] });
       queryClient.invalidateQueries({ queryKey: ["complianceRegister", projectId] });
       queryClient.invalidateQueries({ queryKey: ["complianceRules", projectId] });
-      // Saving a milestone re-dates the register server-side, which can
-      // retire or raise alerts - so the bell has to be refetched too, or
-      // the badge sits there contradicting the screen.
+      // Saving Actual TOC Date re-dates the register server-side, which
+      // can retire or raise alerts - so the bell has to be refetched too,
+      // or the badge sits there contradicting the screen.
       queryClient.invalidateQueries({ queryKey: ["notificationSummary"] });
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
       queryClient.invalidateQueries({ queryKey: ["deadlineFeed"] });
@@ -149,23 +110,12 @@ function MilestonePanel({ projectId, project }) {
     onError: (e) => setError(e.message),
   });
 
-  function setField(name, value) {
-    setForm({ ...values, [name]: value });
-  }
-
-  function handleSave() {
-    // Only send what's actually set. Empty date strings become null so a
-    // milestone can be cleared, but untouched numbers are sent as-is.
-    const payload = { contract_edition: values.contract_edition };
-    for (const field of MILESTONE_FIELDS) {
-      const raw = values[field.name];
-      if (field.type === "date") {
-        payload[field.name] = raw ? raw : null;
-      } else if (raw !== "" && raw !== null && raw !== undefined) {
-        payload[field.name] = Number(raw);
-      }
-    }
-    mutation.mutate(payload);
+  // No Save button on purpose - this is the one manual field left in an
+  // otherwise read-only panel, so it saves the moment a date is picked
+  // rather than leaving a button whose scope (just this field, not the
+  // computed rows above) is easy to misread.
+  function handleTakingOverChange(e) {
+    mutation.mutate({ taking_over_date: e.target.value || null });
   }
 
   return (
@@ -174,10 +124,10 @@ function MilestonePanel({ projectId, project }) {
         <Stack>
           <Typography variant="h6">Contract milestones &amp; periods</Typography>
           <Typography variant="caption" color="text.secondary">
-            Everything below is what the engines measure from. A missing
-            milestone means the obligations anchored on it simply are not
-            generated — deliberately, since a deadline computed from a
-            guessed date looks authoritative and is wrong.
+            Computed from the dates and periods set on Project Creation. A
+            blank row means its source date hasn't been entered yet —
+            deliberately, since a deadline computed from a guessed date
+            looks authoritative and is wrong.
           </Typography>
         </Stack>
       </AccordionSummary>
@@ -187,48 +137,53 @@ function MilestonePanel({ projectId, project }) {
           {error && <Alert severity="error">{error}</Alert>}
 
           <TextField
-            select
             size="small"
             label="Contract edition"
-            value={values.contract_edition}
-            onChange={(e) => setField("contract_edition", e.target.value)}
-            helperText="Clause numbers move between editions — Progress Reports are Sub-Clause 4.20 under 2017 and 4.21 under 1999. This platform prints them straight into Notices."
-          >
-            <MenuItem value="FIDIC 2017">FIDIC 2017 (Red Book 2nd Ed.)</MenuItem>
-            <MenuItem value="FIDIC 1999">FIDIC 1999 (Red Book 1st Ed. / MDB base)</MenuItem>
-          </TextField>
+            value="FIDIC 2017 Red Book 2nd Edition"
+            slotProps={{ input: { readOnly: true } }}
+          />
 
           <Grid container spacing={2}>
-            {MILESTONE_FIELDS.map((field) => (
-              <Grid key={field.name} size={{ xs: 12, sm: 6 }}>
+            {COMPUTED_MILESTONE_ROWS.map((row) => (
+              <Grid key={row.key} size={{ xs: 12, sm: 6 }}>
                 <TextField
                   fullWidth
                   size="small"
-                  type={field.type}
-                  label={field.label}
-                  value={values[field.name] ?? ""}
-                  onChange={(e) => setField(field.name, e.target.value)}
-                  helperText={field.help}
-                  slotProps={{ inputLabel: { shrink: true } }}
+                  label={row.label}
+                  value={project?.[row.key] || "—"}
+                  slotProps={{ input: { readOnly: true } }}
                 />
               </Grid>
             ))}
           </Grid>
 
-          <Stack direction="row" spacing={1}>
-            <Button
-              variant="contained"
-              onClick={handleSave}
-              disabled={mutation.isPending}
-            >
-              Save milestones
-            </Button>
-            {form && (
-              <Button onClick={() => setForm(null)} disabled={mutation.isPending}>
-                Cancel
-              </Button>
-            )}
-          </Stack>
+          <Divider />
+
+          <Paper variant="outlined" sx={{ p: 2 }}>
+            <Stack spacing={1}>
+              <Typography variant="subtitle2">Actual TOC Date (10.1)</Typography>
+              <Typography variant="caption" color="text.secondary">
+                Taking-Over Certificate date — the one milestone above that
+                can&apos;t be computed. Saves as soon as you pick a date;
+                every computed row above re-dates immediately.
+              </Typography>
+              <TextField
+                key={project?.taking_over_date || "unset"}
+                size="small"
+                type="date"
+                defaultValue={project?.taking_over_date || ""}
+                onChange={handleTakingOverChange}
+                disabled={mutation.isPending}
+                slotProps={{ inputLabel: { shrink: true } }}
+                sx={{ maxWidth: 220 }}
+              />
+              {mutation.isPending && (
+                <Typography variant="caption" color="text.secondary">
+                  Saving…
+                </Typography>
+              )}
+            </Stack>
+          </Paper>
         </Stack>
       </AccordionDetails>
     </Accordion>
@@ -580,9 +535,6 @@ function CompliancePage() {
           <Typography variant="h4" fontWeight={700}>
             Compliance register
           </Typography>
-          {/* This whole screen is Engine A. Claims, determinations and
-              instructions live on their own tabs and belong to Engine B. */}
-          <EngineChip engine={ENGINE_A} short={false} size="medium" />
         </Stack>
         <Stack direction="row" spacing={1}>
           {/* "Rebuild" and "Run sweep now" were engineer words for two
@@ -643,8 +595,6 @@ function CompliancePage() {
           {actionResult}
         </Alert>
       )}
-
-      <EngineExplainer />
 
       {rulesQuery.data && (
         <Alert severity="info">{rulesQuery.data.disclaimer}</Alert>

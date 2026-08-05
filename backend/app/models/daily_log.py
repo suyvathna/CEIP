@@ -49,24 +49,14 @@ class DailyLog(Base):
     diary_date: Mapped[date] = mapped_column(Date, nullable=False)
 
     # --- Weather Report -------------------------------------------------
-    # One flat row per day, matching the template's single summary table.
-    # Nullable throughout: filled in by hand today, but the field names
-    # deliberately match what a weather API (e.g. for Phnom Penh) would
-    # return, so this can be auto-populated later without a schema change
-    # (see roadmap: weather auto-corroboration for delay/EOT claims).
-    temp_low_c: Mapped[float | None] = mapped_column(Numeric(4, 1))
-    temp_high_c: Mapped[float | None] = mapped_column(Numeric(4, 1))
+    # One flat row per day. Deliberately just two averages, not a full
+    # forecast-style breakdown (low/high/dew/wind/precip-history) - a PM
+    # filling this in by hand every day needs the gist, not a weather
+    # station log; the rain events that actually matter for a claim are
+    # captured with real time windows and photos in WeatherObservation
+    # ("Rain Records") below instead.
     temp_avg_c: Mapped[float | None] = mapped_column(Numeric(4, 1))
-    precip_since_midnight_mm: Mapped[float | None] = mapped_column(Numeric(6, 2))
-    precip_2_days_ago_mm: Mapped[float | None] = mapped_column(Numeric(6, 2))
-    precip_3_days_ago_mm: Mapped[float | None] = mapped_column(Numeric(6, 2))
-    humidity_low_pct: Mapped[int | None] = mapped_column()
     humidity_avg_pct: Mapped[int | None] = mapped_column()
-    humidity_high_pct: Mapped[int | None] = mapped_column()
-    dew_point_c: Mapped[float | None] = mapped_column(Numeric(4, 1))
-    wind_avg_kmh: Mapped[float | None] = mapped_column(Numeric(5, 1))
-    wind_max_kmh: Mapped[float | None] = mapped_column(Numeric(5, 1))
-    wind_gust_kmh: Mapped[float | None] = mapped_column(Numeric(5, 1))
 
     # --- Daily Snapshot ---------------------------------------------------
     # The template's 6-slot hourly forecast strip (06:00, 09:00, ... 21:00),

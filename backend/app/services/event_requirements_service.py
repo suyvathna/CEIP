@@ -61,15 +61,7 @@ def _evidence_count(db: Session, event_id: UUID, daily_log_ids: list[UUID]) -> i
 
 def _has_weather_report_data(daily_log: DailyLog) -> bool:
     """Weather Report section (the day's summary row) actually filled in, not just left blank."""
-    fields = (
-        daily_log.temp_low_c,
-        daily_log.temp_high_c,
-        daily_log.temp_avg_c,
-        daily_log.precip_since_midnight_mm,
-        daily_log.humidity_avg_pct,
-        daily_log.wind_avg_kmh,
-    )
-    return any(f is not None for f in fields)
+    return daily_log.temp_avg_c is not None or daily_log.humidity_avg_pct is not None
 
 
 def _has_halted_work(db: Session, daily_log: DailyLog) -> bool:

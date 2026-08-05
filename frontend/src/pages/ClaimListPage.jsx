@@ -18,8 +18,6 @@ import { getProjectClaims } from "../api/claims";
 import { getProjectVariations } from "../api/variations";
 import { getProjectDeterminations } from "../api/determinations";
 import ProjectNav from "../components/ProjectNav";
-import EngineChip from "../components/EngineChip";
-import { ENGINE_B } from "../utils/engines";
 import {
   DETERMINATION_STATUS_COLORS,
   DETERMINATION_STATUS_LABELS,
@@ -430,7 +428,6 @@ function ClaimListPage() {
           <Typography variant="h4" fontWeight={700}>
             Claims
           </Typography>
-          {activeTab !== "claims" && <EngineChip engine={ENGINE_B} short={false} />}
         </Stack>
         {meta.newTo && (
           <Button

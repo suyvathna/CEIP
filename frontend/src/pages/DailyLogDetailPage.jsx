@@ -198,17 +198,8 @@ function DailyLogDetailPage() {
 
       <Section title="Weather Report">
         <Grid container spacing={1}>
-          <Grid size={{ xs: 6, sm: 3 }}><InfoField label="Temp low" value={dailyLog.temp_low_c && `${dailyLog.temp_low_c}°C`} /></Grid>
-          <Grid size={{ xs: 6, sm: 3 }}><InfoField label="Temp high" value={dailyLog.temp_high_c && `${dailyLog.temp_high_c}°C`} /></Grid>
-          <Grid size={{ xs: 6, sm: 3 }}><InfoField label="Temp avg" value={dailyLog.temp_avg_c && `${dailyLog.temp_avg_c}°C`} /></Grid>
-          <Grid size={{ xs: 6, sm: 3 }}><InfoField label="Dew point" value={dailyLog.dew_point_c && `${dailyLog.dew_point_c}°C`} /></Grid>
-          <Grid size={{ xs: 6, sm: 3 }}><InfoField label="Precip since midnight" value={dailyLog.precip_since_midnight_mm && `${dailyLog.precip_since_midnight_mm} mm`} /></Grid>
-          <Grid size={{ xs: 6, sm: 3 }}><InfoField label="Precip 2 days ago" value={dailyLog.precip_2_days_ago_mm && `${dailyLog.precip_2_days_ago_mm} mm`} /></Grid>
-          <Grid size={{ xs: 6, sm: 3 }}><InfoField label="Precip 3 days ago" value={dailyLog.precip_3_days_ago_mm && `${dailyLog.precip_3_days_ago_mm} mm`} /></Grid>
-          <Grid size={{ xs: 6, sm: 3 }}><InfoField label="Humidity" value={dailyLog.humidity_avg_pct != null && `${dailyLog.humidity_low_pct ?? "?"}-${dailyLog.humidity_high_pct ?? "?"}% (avg ${dailyLog.humidity_avg_pct}%)`} /></Grid>
-          <Grid size={{ xs: 6, sm: 3 }}><InfoField label="Wind avg" value={dailyLog.wind_avg_kmh && `${dailyLog.wind_avg_kmh} km/h`} /></Grid>
-          <Grid size={{ xs: 6, sm: 3 }}><InfoField label="Wind max" value={dailyLog.wind_max_kmh && `${dailyLog.wind_max_kmh} km/h`} /></Grid>
-          <Grid size={{ xs: 6, sm: 3 }}><InfoField label="Wind gust" value={dailyLog.wind_gust_kmh && `${dailyLog.wind_gust_kmh} km/h`} /></Grid>
+          <Grid size={{ xs: 6, sm: 3 }}><InfoField label="Temp avg" value={dailyLog.temp_avg_c != null && `${dailyLog.temp_avg_c}°C`} /></Grid>
+          <Grid size={{ xs: 6, sm: 3 }}><InfoField label="Humidity avg" value={dailyLog.humidity_avg_pct != null && `${dailyLog.humidity_avg_pct}%`} /></Grid>
         </Grid>
       </Section>
 
@@ -226,19 +217,30 @@ function DailyLogDetailPage() {
         </Section>
       )}
 
-      <Section title="Observed Weather Conditions">
+      <Section title="Rain Records">
         <EntryTable
           rows={dailyLog.weather_observations}
-          emptyLabel="No weather observations logged."
+          emptyLabel="No rain records logged."
           columns={[
-            { key: "observed_time", label: "Time" },
+            { key: "start_time", label: "Start" },
+            { key: "end_time", label: "Finish" },
             { key: "caused_delay", label: "Delay?", render: (v) => (v ? "Yes" : "No") },
-            { key: "sky", label: "Sky" },
-            { key: "temp_avg_c", label: "Temp" },
-            { key: "precipitation", label: "Precipitation" },
-            { key: "wind", label: "Wind" },
-            { key: "ground_condition", label: "Ground" },
-            { key: "calamity", label: "Calamity" },
+            {
+              key: "evidence_id",
+              label: "Photo",
+              render: (evidenceId) => {
+                if (!evidenceId) return "—";
+                return (
+                  <a href={`${BASE_URL}/evidence/download/${evidenceId}`} target="_blank" rel="noreferrer">
+                    <img
+                      src={`${BASE_URL}/evidence/download/${evidenceId}`}
+                      alt="Rain record"
+                      style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 4, display: "block" }}
+                    />
+                  </a>
+                );
+              },
+            },
             { key: "comments", label: "Comments" },
           ]}
         />
