@@ -240,6 +240,10 @@ def delete_daily_log(db: Session, daily_log_id: UUID):
     if not db_daily_log:
         return None
 
+    db.query(DailyLogEventLink).filter(
+        DailyLogEventLink.daily_log_id == daily_log_id
+    ).delete()
+
     db.delete(db_daily_log)
     db.commit()
 
