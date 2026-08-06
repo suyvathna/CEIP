@@ -1,14 +1,71 @@
+/* Self-hosted (no external font CDN) - see frontend/public/fonts. */
+@font-face {
+  font-family: "Barlow";
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/barlow-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Barlow";
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/barlow-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Barlow";
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/barlow-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Barlow Condensed";
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/barlowcond-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Barlow Condensed";
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/barlowcond-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/plexmono-500.woff2") format("woff2");
+}
+
+/*
+ * "Field register" palette: cool drafting-paper ground, survey-ink text,
+ * laterite red-orange as the one accent (the colour of the road subgrade
+ * soil these contracts are literally built on), muted brass as a
+ * secondary marker. Semantic status colours (critical/warning/good) are
+ * deliberately distinct from the accent hue - see theme.js for the MUI
+ * side of the same palette.
+ */
 :root {
-  --color-bg: #f7f7f8;
+  --color-bg: #edf0ef;
   --color-surface: #ffffff;
-  --color-border: #e2e2e6;
-  --color-text: #1f2023;
-  --color-text-muted: #6b6b74;
-  --color-primary: #2f6f4f;
-  --color-primary-hover: #255a40;
-  --color-danger: #b3261e;
-  --radius: 8px;
-  --font-sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --color-surface-sunken: #e4e8e7;
+  --color-border: #d6dcda;
+  --color-text: #16232c;
+  --color-text-muted: #57666e;
+  --color-primary: #b8481f;
+  --color-primary-hover: #963b19;
+  --color-danger: #a02b2b;
+  --color-warning: #8a5e12;
+  --color-good: #2e6a4a;
+  --radius: 4px;
+  --font-sans: "Barlow", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Barlow Condensed", "Barlow", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", monospace;
 }
 
 * {
@@ -19,6 +76,7 @@ body {
   margin: 0;
   font-family: var(--font-sans);
   color: var(--color-text);
+  background: var(--color-bg);
   line-height: 1.5;
 }
 
@@ -32,12 +90,18 @@ body {
  */
 
 .legacy-page h1 {
-  font-size: 28px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 32px;
+  letter-spacing: 0.01em;
   margin: 0 0 24px;
 }
 
 .legacy-page h2 {
-  font-size: 20px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 22px;
+  letter-spacing: 0.01em;
   margin: 0 0 12px;
 }
 
@@ -90,19 +154,19 @@ body {
 
 .status-open,
 .status-planning {
-  background: #fff4d6;
-  color: #8a6100;
+  background: #f4e7cc;
+  color: var(--color-warning);
 }
 
 .status-closed,
 .status-completed {
-  background: #dcefe1;
-  color: #1f6b3a;
+  background: #deeae2;
+  color: var(--color-good);
 }
 
 .status-ongoing {
-  background: #dce7fb;
-  color: #1c4f9c;
+  background: #e1e9ec;
+  color: #33566b;
 }
 
 .legacy-page form {
@@ -173,23 +237,23 @@ body {
 }
 
 .notice-pending {
-  background: #dce7fb;
-  color: #1c4f9c;
+  background: #e1e9ec;
+  color: #33566b;
 }
 
 .notice-overdue {
-  background: #fbdcdc;
-  color: #a3231c;
+  background: #f7e4e1;
+  color: var(--color-danger);
 }
 
 .notice-given_on_time {
-  background: #dcefe1;
-  color: #1f6b3a;
+  background: #deeae2;
+  color: var(--color-good);
 }
 
 .notice-given_late {
-  background: #fde8cc;
-  color: #8a5300;
+  background: #f4e7cc;
+  color: var(--color-warning);
 }
 
 .notice-form {
@@ -215,16 +279,17 @@ body {
 }
 
 .clause-reference {
-  background: #f4f6fb;
+  background: var(--color-surface-sunken);
   border-radius: var(--radius);
   padding: 12px 14px;
   margin-bottom: 12px;
 }
 
 .clause-basis {
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-weight: 500;
   font-size: 13px;
-  color: #1c4f9c;
+  color: #33566b;
 }
 
 .clause-summary {
@@ -247,13 +312,13 @@ body {
 }
 
 .requirement-met {
-  background: #dcefe1;
-  color: #1f6b3a;
+  background: #deeae2;
+  color: var(--color-good);
 }
 
 .requirement-missing {
-  background: #fbdcdc;
-  color: #a3231c;
+  background: #f7e4e1;
+  color: var(--color-danger);
 }
 
 .requirement-status {
@@ -271,7 +336,7 @@ body {
 }
 
 .legacy-page .danger-button:hover {
-  background: #8f1e18;
+  background: #7f2321;
 }
 
 .daily-log-entry,

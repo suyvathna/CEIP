@@ -1,45 +1,82 @@
 import { createTheme } from "@mui/material/styles";
 
-// Mirrors the green palette that was already defined in index.css so the
-// new MUI surfaces (AppBar, Dashboard, Timeline, Report, Search) sit
-// naturally next to the legacy plain-CSS pages that are kept as-is.
+// "Field register" palette: cool drafting-paper ground, deep survey-ink
+// text, laterite red-orange as the one accent (the colour of the road
+// subgrade soil these highway contracts are literally built on), muted
+// brass as a secondary marker. Mirrors the same tokens in index.css so
+// the MUI surfaces (AppBar, dashboards, tables, forms) and the legacy
+// plain-CSS pages (project/event CRUD, login) read as one system.
+// Semantic status colours (error/warning/success/info) are deliberately
+// distinct from the primary accent hue, not shades of it.
 const theme = createTheme({
   palette: {
     primary: {
-      main: "#2f6f4f",
-      dark: "#255a40",
+      main: "#b8481f",
+      dark: "#963b19",
+      light: "#d97a48",
+      contrastText: "#ffffff",
+    },
+    secondary: {
+      main: "#8c6a22",
+      dark: "#6f5419",
       contrastText: "#ffffff",
     },
     error: {
-      main: "#b3261e",
+      main: "#a02b2b",
+    },
+    warning: {
+      main: "#8a5e12",
+    },
+    success: {
+      main: "#2e6a4a",
+    },
+    info: {
+      main: "#33566b",
     },
     background: {
-      default: "#f7f7f8",
+      default: "#edf0ef",
       paper: "#ffffff",
     },
     text: {
-      primary: "#1f2023",
-      secondary: "#6b6b74",
+      primary: "#16232c",
+      secondary: "#57666e",
     },
+    divider: "#d6dcda",
     severity: {
-      low: "#1f6b3a",
-      medium: "#8a6100",
-      high: "#a3231c",
+      low: "#2e6a4a",
+      medium: "#8a5e12",
+      high: "#a02b2b",
     },
   },
   shape: {
-    borderRadius: 8,
+    borderRadius: 4,
   },
   typography: {
-    fontFamily: "system-ui, 'Segoe UI', Roboto, sans-serif",
+    fontFamily: "'Barlow', system-ui, 'Segoe UI', Roboto, sans-serif",
+    h1: { fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: "0.01em" },
+    h2: { fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: "0.01em" },
+    h3: { fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: "0.01em" },
+    h4: { fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: "0.01em" },
+    h5: { fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600, letterSpacing: "0.01em" },
+    h6: { fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600, letterSpacing: "0.01em" },
+    subtitle1: { fontWeight: 500 },
+    subtitle2: { fontWeight: 600 },
+    // Table headers, chip labels and the like read as technical register
+    // captions when they get the eyebrow treatment - condensed, uppercase,
+    // a touch of tracking - rather than plain small grey text.
+    overline: {
+      fontFamily: "'Barlow Condensed', sans-serif",
+      fontWeight: 600,
+      letterSpacing: "0.09em",
+    },
   },
   components: {
     MuiAppBar: {
       styleOverrides: {
         root: {
           backgroundColor: "#ffffff",
-          color: "#1f2023",
-          borderBottom: "1px solid #e2e2e6",
+          color: "#16232c",
+          borderBottom: "1px solid #d6dcda",
         },
       },
     },
@@ -57,11 +94,51 @@ const theme = createTheme({
     MuiPaper: {
       styleOverrides: {
         root: {
-          border: "1px solid #e2e2e6",
+          border: "1px solid #d6dcda",
+          backgroundImage: "none",
         },
       },
       defaultProps: {
         elevation: 0,
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          fontWeight: 500,
+        },
+      },
+    },
+    MuiTableCell: {
+      styleOverrides: {
+        head: {
+          fontFamily: "'Barlow Condensed', sans-serif",
+          fontWeight: 600,
+          fontSize: "0.7rem",
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+          color: "#57666e",
+          backgroundColor: "#e4e8e7",
+        },
+      },
+    },
+    MuiTabs: {
+      styleOverrides: {
+        indicator: {
+          backgroundColor: "#b8481f",
+          height: 2,
+        },
+      },
+    },
+    MuiTab: {
+      styleOverrides: {
+        root: {
+          textTransform: "none",
+          fontWeight: 500,
+          "&.Mui-selected": {
+            color: "#b8481f",
+          },
+        },
       },
     },
   },
