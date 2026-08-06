@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useParams, Link as RouterLink } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useParams, useSearchParams, Link as RouterLink } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Typography from "@mui/material/Typography";
 import Stack from "@mui/material/Stack";
@@ -495,8 +495,15 @@ function EventDrivenTable({ projectId }) {
 function CompliancePage() {
   const { projectId } = useParams();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [docTab, setDocTab] = useState("always");
   const [statusFilter, setStatusFilter] = useState("");
+  // Set from ?highlight=<obligation id> (see NotificationBell/deadline
+  // feed link_paths) - scrolled to and flashed once the register has
+  // loaded, then cleared so a later reload of this same URL doesn't
+  // replay it.
+  const highlightId = searchParams.get("highlight");
+  const [flashId, setFlashId] = useState(highlightId);
   const [submitTarget, setSubmitTarget] = useState(null);
   const [waiveTarget, setWaiveTarget] = useState(null);
   const [actionError, setActionError] = useState(null);
@@ -556,6 +563,23 @@ function CompliancePage() {
   const rulesByKey = Object.fromEntries(
     (rulesQuery.data?.rules || []).map((rule) => [rule.key, rule])
   );
+
+  useEffect(() => {
+    if (!highlightId || obligations.length === 0) return;
+
+    const row = document.getElementById(`obligation-row-${highlightId}`);
+    row?.scrollIntoView({ behavior: "smooth", block: "center" });
+
+    const timer = setTimeout(() => {
+      setFlashId(null);
+      const next = new URLSearchParams(searchParams);
+      next.delete("highlight");
+      setSearchParams(next, { replace: true });
+    }, 3000);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightId, obligations.length]);
 
   return (
     <Stack spacing={2}>
@@ -699,7 +723,12 @@ function CompliancePage() {
                 const closed = ["Waived", "Superseded"].includes(row.status);
 
                 return (
-                  <TableRow key={row.id} hover>
+                  <TableRow
+                    key={row.id}
+                    id={`obligation-row-${row.id}`}
+                    hover
+                    className={row.id === flashId ? "compliance-row-flash" : undefined}
+                  >
                     <TableCell sx={{ whiteSpace: "nowrap" }}>
                       {row.clause_code}
                     </TableCell>

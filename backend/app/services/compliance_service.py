@@ -478,8 +478,13 @@ def refresh_statuses(db: Session, project: Project, today: date | None = None) -
 # Alerting
 # ---------------------------------------------------------------------
 
-def _obligation_link(project_id: UUID) -> str:
-    return f"/projects/{project_id}/compliance"
+def _obligation_link(project_id: UUID, obligation_id: UUID | None = None) -> str:
+    base = f"/projects/{project_id}/compliance"
+    # Points the register straight at the row the alert was about - see
+    # CompliancePage's scroll-to-and-flash handling of ?highlight=. Left
+    # off for the historical-backlog summary alert below, which is about
+    # many rows at once, not one.
+    return f"{base}?highlight={obligation_id}" if obligation_id else base
 
 
 def alert_obligations(
@@ -551,7 +556,7 @@ def alert_obligations(
             source_type="obligation",
             source_id=row.id,
             stage="due",
-            link_path=_obligation_link(project.id),
+            link_path=_obligation_link(project.id, row.id),
             due_date=row.due_date,
             days_remaining=days_remaining,
             dedupe_key=notification_service.build_dedupe_key(

@@ -13,7 +13,6 @@ import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import Tooltip from "@mui/material/Tooltip";
 import NotificationsIcon from "@mui/icons-material/Notifications";
-import EngineChip from "./EngineChip";
 import {
   getNotifications,
   getNotificationSummary,
@@ -25,14 +24,6 @@ const SEVERITY_COLORS = {
   Critical: "error",
   Warning: "warning",
   Info: "info",
-};
-
-const CATEGORY_LABELS = {
-  Compliance: "Compliance",
-  Claim: "Claim",
-  Determination: "Determination",
-  Variation: "Variation",
-  Event: "Event",
 };
 
 // 60s. The engines write on a daily sweep plus on user actions, so
@@ -190,15 +181,6 @@ function NotificationBell({ projectId }) {
                   size="small"
                   color={SEVERITY_COLORS[notification.severity] || "default"}
                   label={notification.severity}
-                />
-                <EngineChip engine={notification.engine} />
-                <Chip
-                  size="small"
-                  variant="outlined"
-                  label={
-                    CATEGORY_LABELS[notification.category] ||
-                    notification.category
-                  }
                 />
                 {notification.days_remaining !== null &&
                   notification.days_remaining !== undefined && (

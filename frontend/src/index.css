@@ -472,3 +472,16 @@ body {
   font-weight: 600;
   color: var(--color-text-muted);
 }
+
+/* Landing on the Compliance register from an Alert/Deadline link
+   (?highlight=<obligation id>) - the row is scrolled into view and this
+   flashes a few times so it's unmistakable which one the alert meant,
+   then CompliancePage clears the class once the animation's done. */
+@keyframes compliance-row-flash {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: rgba(255, 179, 0, 0.35); }
+}
+
+.compliance-row-flash {
+  animation: compliance-row-flash 1s ease-in-out 3;
+}

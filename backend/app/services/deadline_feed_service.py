@@ -115,7 +115,7 @@ def _obligation_items(
             today=today,
             lead_days=lead_days,
             clause_code=row.clause_code,
-            link_path=f"/projects/{project.id}/compliance",
+            link_path=f"/projects/{project.id}/compliance?highlight={row.id}",
             status=row.status,
         )
         for row in rows
