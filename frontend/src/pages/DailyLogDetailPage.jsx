@@ -14,6 +14,7 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Grid from "@mui/material/Grid";
 import AddIcon from "@mui/icons-material/Add";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
@@ -111,7 +112,7 @@ function DailyLogDetailPage() {
     if (!confirmed) return;
     try {
       await deleteDailyLog(dailyLogId);
-      navigate(`/projects/${projectId}`);
+      navigate(`/projects/${projectId}/report`);
     } catch (err) {
       setActionError(err.message);
     }
@@ -135,7 +136,15 @@ function DailyLogDetailPage() {
 
   return (
     <Stack spacing={2}>
-      <RouterLink to={`/projects/${projectId}`}>&larr; Back to project</RouterLink>
+      <Button
+        component={RouterLink}
+        to={`/projects/${projectId}/report`}
+        size="small"
+        startIcon={<ArrowBackIcon fontSize="small" />}
+        sx={{ alignSelf: "flex-start" }}
+      >
+        Back to Site Records
+      </Button>
 
       <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1 }}>
         <Typography variant="h4">Daily Log: {dailyLog.diary_date}</Typography>
@@ -202,20 +211,6 @@ function DailyLogDetailPage() {
           <Grid size={{ xs: 6, sm: 3 }}><InfoField label="Humidity avg" value={dailyLog.humidity_avg_pct != null && `${dailyLog.humidity_avg_pct}%`} /></Grid>
         </Grid>
       </Section>
-
-      {dailyLog.daily_snapshot?.length > 0 && (
-        <Section title="Daily Snapshot">
-          <Stack direction="row" spacing={2} flexWrap="wrap">
-            {dailyLog.daily_snapshot.map((slot, i) => (
-              <Paper key={i} variant="outlined" sx={{ p: 1, minWidth: 90, textAlign: "center" }}>
-                <Typography variant="caption" color="text.secondary">{slot.time}</Typography>
-                <Typography variant="body2">{slot.condition || "—"}</Typography>
-                <Typography variant="body2">{slot.temp_c != null ? `${slot.temp_c}°C` : ""}</Typography>
-              </Paper>
-            ))}
-          </Stack>
-        </Section>
-      )}
 
       <Section title="Rain Records">
         <EntryTable

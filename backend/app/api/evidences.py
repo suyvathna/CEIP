@@ -43,6 +43,7 @@ def upload_evidence(
     event_id: UUID | None = Form(None),
     daily_log_id: UUID | None = Form(None),
     correspondence_id: UUID | None = Form(None),
+    obligation_id: UUID | None = Form(None),
     category: str | None = Form(None),
     caption: str | None = Form(None),
     file: UploadFile = File(...),
@@ -52,10 +53,10 @@ def upload_evidence(
     # delivery, an HSE finding, general progress) have no corresponding
     # Event at all, which is exactly why event_id can no longer be
     # required here - but the upload still has to land somewhere.
-    if not event_id and not daily_log_id and not correspondence_id:
+    if not event_id and not daily_log_id and not correspondence_id and not obligation_id:
         raise HTTPException(
             status_code=422,
-            detail="Provide one of event_id, daily_log_id or correspondence_id.",
+            detail="Provide one of event_id, daily_log_id, correspondence_id or obligation_id.",
         )
 
     uploaded = upload_file(file)
@@ -64,6 +65,7 @@ def upload_evidence(
         event_id=event_id,
         daily_log_id=daily_log_id,
         correspondence_id=correspondence_id,
+        obligation_id=obligation_id,
         category=category,
         caption=caption,
         filename=uploaded["filename"],
@@ -90,6 +92,7 @@ def search_evidences(
     event_id: UUID | None = None,
     daily_log_id: UUID | None = None,
     correspondence_id: UUID | None = None,
+    obligation_id: UUID | None = None,
     db: Session = Depends(get_db),
 ):
     return search_evidence(
@@ -98,6 +101,7 @@ def search_evidences(
         event_id=event_id,
         daily_log_id=daily_log_id,
         correspondence_id=correspondence_id,
+        obligation_id=obligation_id,
     )
 
 

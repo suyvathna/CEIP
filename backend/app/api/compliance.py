@@ -17,7 +17,6 @@ from app.schemas.compliance import (
     ComplianceRegisterOut,
     ComplianceRulesOut,
     ComplianceRunOut,
-    ComplianceTickOut,
     EventDrivenRulesOut,
     ObligationOut,
     ObligationStatusOut,
@@ -242,7 +241,9 @@ def waive_obligation(
     agreed, no monthly revised programme is required, and so on. Survives
     every subsequent tick.
     """
-    obligation = compliance_service.waive(db, obligation_id, payload.reason)
+    obligation = compliance_service.waive(
+        db, obligation_id, payload.reason, evidence_id=payload.evidence_id
+    )
 
     if obligation is None:
         raise HTTPException(status_code=404, detail="Obligation not found")
@@ -259,37 +260,6 @@ def reopen_obligation(obligation_id: UUID, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Obligation not found")
 
     return obligation
-
-
-@router.post("/tick", response_model=ComplianceTickOut)
-def run_tick(db: Session = Depends(get_db)):
-    """
-    Run the daily sweep now.
-
-    Exposed as an endpoint for three reasons: it makes the scheduler
-    testable without waiting for 06:00, it lets a deployment that would
-    rather drive this from system cron or a cloud scheduler switch
-    CEIP_SCHEDULER_ENABLED off and call this instead, and it gives
-    support a way to reproduce what the scheduler saw.
-
-    Safe to call repeatedly - obligations dedupe on
-    (project, rule, period) and alerts on their dedupe key, and a
-    Postgres advisory lock stops two callers overlapping.
-    """
-    run = compliance_service.run_daily_tick(db, trigger_source="manual")
-
-    if run is None:
-        return {
-            "ran": False,
-            "detail": "Another worker is already running the sweep.",
-            "run": None,
-        }
-
-    return {
-        "ran": run.status == "completed",
-        "detail": run.error or "Sweep completed.",
-        "run": run,
-    }
 
 
 @router.get("/runs", response_model=list[ComplianceRunOut])

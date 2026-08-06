@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import Button from "@mui/material/Button";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import AddIcon from "@mui/icons-material/Add";
 import { getEvent, getEventRequirements, markNoticeGiven, deleteEvent } from "../api/events";
 import { getEventDailyLogs } from "../api/dailyLogs";
 import { getEventEvidence, deleteEvidence } from "../api/evidence";
@@ -58,7 +62,7 @@ function EventDetailPage() {
 
     try {
       await deleteEvent(eventId);
-      navigate(`/projects/${projectId}`);
+      navigate(`/projects/${projectId}/report`);
     } catch (err) {
       setDeleteError(err.message);
     }
@@ -98,7 +102,15 @@ function EventDetailPage() {
 
   return (
     <div className="event-detail legacy-page">
-      <Link to={`/projects/${projectId}`}>&larr; Back to project</Link>
+      <Button
+        component={Link}
+        to={`/projects/${projectId}/report`}
+        size="small"
+        startIcon={<ArrowBackIcon fontSize="small" />}
+        sx={{ alignSelf: "flex-start" }}
+      >
+        Back to Site Records
+      </Button>
       <div className="page-header">
         <h1>{event.event_no ? `${event.event_no} — ${event.title}` : event.title}</h1>
         <div className="project-actions">
@@ -216,7 +228,14 @@ function EventDetailPage() {
           Daily Log tab instead. */}
       <div className="section-header">
         <h2>Linked Daily Log</h2>
-        <Link to={`/projects/${projectId}`}>Go to Daily Log tab</Link>
+        <Button
+          component={Link}
+          to={`/projects/${projectId}/report?tab=dailyLog`}
+          size="small"
+          endIcon={<ArrowForwardIcon fontSize="small" />}
+        >
+          Go to Daily Log tab
+        </Button>
       </div>
       {dailyLogs.length === 0 ? (
         <p>
@@ -245,9 +264,14 @@ function EventDetailPage() {
       {/* Attachments Section (formerly "Evidence") */}
       <div className="section-header">
         <h2>Attachments</h2>
-        <Link to={`/projects/${projectId}/events/${eventId}/evidence/new`}>
-          + Add Attachment
-        </Link>
+        <Button
+          component={Link}
+          to={`/projects/${projectId}/events/${eventId}/evidence/new`}
+          size="small"
+          startIcon={<AddIcon fontSize="small" />}
+        >
+          Add Attachment
+        </Button>
       </div>
       {attachmentError && <p className="form-error">{attachmentError}</p>}
       {evidence.length === 0 ? (

@@ -8,10 +8,13 @@ import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import MenuItem from "@mui/material/MenuItem";
 import Alert from "@mui/material/Alert";
+import Chip from "@mui/material/Chip";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import AttachFileIcon from "@mui/icons-material/AttachFile";
 import ProjectNav from "../components/ProjectNav";
 import { todayLocalISODate } from "../utils/date";
 import { createCorrespondence } from "../api/correspondence";
+import { uploadEvidence } from "../api/evidence";
 
 const DIRECTIONS = [
   { value: "Outgoing", label: "Outgoing — Contractor to Engineer" },
@@ -33,10 +36,17 @@ function NewCorrespondencePage() {
     related_to: "",
     summary: "",
   });
+  const [files, setFiles] = useState([]);
   const [error, setError] = useState(null);
 
   const mutation = useMutation({
-    mutationFn: (payload) => createCorrespondence(payload),
+    mutationFn: async (payload) => {
+      const correspondence = await createCorrespondence(payload);
+      for (const file of files) {
+        await uploadEvidence({ correspondenceId: correspondence.id }, file);
+      }
+      return correspondence;
+    },
     onSuccess: (correspondence) =>
       navigate(`/projects/${projectId}/correspondence/${correspondence.id}`),
     onError: (e) => setError(e.message),
@@ -44,6 +54,17 @@ function NewCorrespondencePage() {
 
   function setField(name, value) {
     setForm((current) => ({ ...current, [name]: value }));
+  }
+
+  function handleFilesSelected(e) {
+    const chosen = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (chosen.length === 0) return;
+    setFiles((current) => [...current, ...chosen]);
+  }
+
+  function removeFile(index) {
+    setFiles((current) => current.filter((_, i) => i !== index));
   }
 
   function handleSubmit(event) {
@@ -150,6 +171,20 @@ function NewCorrespondencePage() {
             value={form.summary}
             onChange={(e) => setField("summary", e.target.value)}
           />
+
+          <Stack spacing={1}>
+            <Button component="label" variant="outlined" startIcon={<AttachFileIcon fontSize="small" />} sx={{ alignSelf: "flex-start" }}>
+              Upload reference document(s)
+              <input type="file" multiple hidden onChange={handleFilesSelected} />
+            </Button>
+            {files.length > 0 && (
+              <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
+                {files.map((file, i) => (
+                  <Chip key={`${file.name}-${i}`} label={file.name} onDelete={() => removeFile(i)} />
+                ))}
+              </Stack>
+            )}
+          </Stack>
 
           <Button
             type="submit"

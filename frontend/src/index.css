@@ -256,7 +256,7 @@ body {
   color: var(--color-warning);
 }
 
-.notice-form {
+.legacy-page .notice-form {
   flex-direction: row;
   align-items: flex-end;
   max-width: none;
@@ -264,7 +264,7 @@ body {
   margin-top: 8px;
 }
 
-.notice-form label {
+.legacy-page .notice-form label {
   flex-direction: row;
   align-items: center;
   gap: 8px;
@@ -349,9 +349,9 @@ body {
 }
 
 /* The Daily Log form has several wide, table-based sections (Manpower,
-   Equipment, Delivery, Inspection, HSE, Visitors, Weather Observations,
-   Daily Snapshot) that the standard 480px legacy-page form width would
-   badly crush - it gets its own width. */
+   Equipment, Delivery, Inspection, HSE, Visitors, Rain Records) that the
+   standard 480px legacy-page form width would badly crush - it gets its
+   own width. */
 .new-daily-log-page form {
   max-width: 900px;
 }

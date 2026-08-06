@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import Button from "@mui/material/Button";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { createProject, updateProjectMilestones } from "../api/projects";
 
 const CURRENCIES = ["USD", "KHR", "THB", "EUR"];
@@ -118,7 +120,15 @@ function NewProjectPage() {
 
   return (
     <div className="new-project-page legacy-page">
-      <Link to="/">&larr; Back to projects</Link>
+      <Button
+        component={Link}
+        to="/"
+        size="small"
+        startIcon={<ArrowBackIcon fontSize="small" />}
+        sx={{ alignSelf: "flex-start" }}
+      >
+        Back to projects
+      </Button>
       <h1>New Project</h1>
       <form onSubmit={handleSubmit}>
         <label>

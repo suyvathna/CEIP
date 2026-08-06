@@ -338,9 +338,9 @@ def _fetch_thumbnail(evidence, max_width=5 * cm):
 def _daily_log_flowables(report: dict, styles, embed_photos: bool = True) -> list:
     """
     One Daily Log's worth of flowables, in the same section order as the
-    reference site-log template: Weather Report, Daily Snapshot,
-    Observed Weather Conditions, Notes, Manpower/Equipment/Delivery/
-    Inspection/HSE/Visitor logs, then Photos. Shared by both the
+    reference site-log template: Weather Report, Rain Records, Notes,
+    Manpower/Equipment/Delivery/Inspection/HSE/Visitor logs, then Photos.
+    Shared by both the
     single-day report and the project-wide compiled report so the two
     documents never drift into different layouts.
     """
@@ -364,23 +364,6 @@ def _daily_log_flowables(report: dict, styles, embed_photos: bool = True) -> lis
         )
     )
     story.append(Spacer(1, 0.4 * cm))
-
-    snapshot = report.get("daily_snapshot") or []
-    if snapshot:
-        story.append(Paragraph("Daily Snapshot", styles["Heading3"]))
-        slot_header = [slot.get("time", "") for slot in snapshot]
-        slot_condition = [slot.get("condition", "") for slot in snapshot]
-        slot_temp = [
-            f"{slot['temp_c']}°C" if slot.get("temp_c") is not None else ""
-            for slot in snapshot
-        ]
-        story.append(
-            _styled_table(
-                [slot_header, slot_condition, slot_temp],
-                col_widths=[2.5 * cm] * len(snapshot),
-            )
-        )
-        story.append(Spacer(1, 0.4 * cm))
 
     weather_obs = report.get("weather_observations") or []
     if weather_obs:
@@ -557,9 +540,9 @@ def _daily_log_flowables(report: dict, styles, embed_photos: bool = True) -> lis
 def generate_daily_log_pdf(report: dict, project_name: str | None = None):
     """
     A single Daily Log, formatted to match the reference site-log
-    template's section layout (Weather Report, Daily Snapshot, Observed
-    Weather Conditions, Notes, the structured logs, then Photos) - the
-    "similar format" PDF export requested for the Report tab, callable
+    template's section layout (Weather Report, Rain Records, Notes, the
+    structured logs, then Photos) - the "similar format" PDF export
+    requested for the Report tab, callable
     per-day from the Daily Log detail page.
     """
     buffer = BytesIO()

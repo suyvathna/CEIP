@@ -19,7 +19,8 @@ import ForwardToInboxIcon from "@mui/icons-material/ForwardToInbox";
  * Overview), what the calendar requires (Compliance), what is being
  * claimed (Claims — which now also holds Variations and Determinations as
  * sub-tabs), what was sent to/received from the Engineer outside this
- * platform (Correspondence), and the exportable record of it all (Report).
+ * platform (Correspondence), and the exportable record of it all - the
+ * Events/Daily Log registers plus the export panels (Site Records).
  *
  * Every screen reachable from here is scoped to this one project - there
  * is no cross-project view anywhere in the app, Deadlines included.
@@ -73,7 +74,7 @@ function ProjectNav({ projectId, active }) {
         />
         <Tab
           value="report"
-          label="Report"
+          label="Site Records"
           icon={<SummarizeIcon fontSize="small" />}
           iconPosition="start"
           component={RouterLink}

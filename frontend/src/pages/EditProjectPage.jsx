@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
+import Button from "@mui/material/Button";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { getProject, updateProject, updateProjectMilestones } from "../api/projects";
 
 const CURRENCIES = ["USD", "KHR", "THB", "EUR"];
@@ -101,7 +103,15 @@ function EditProjectPage() {
 
   return (
     <div className="edit-project-page legacy-page">
-      <Link to={`/projects/${projectId}`}>&larr; Back to project</Link>
+      <Button
+        component={Link}
+        to={`/projects/${projectId}`}
+        size="small"
+        startIcon={<ArrowBackIcon fontSize="small" />}
+        sx={{ alignSelf: "flex-start" }}
+      >
+        Back to project
+      </Button>
       <h1>Edit Project</h1>
       <form onSubmit={handleSubmit}>
         <label>

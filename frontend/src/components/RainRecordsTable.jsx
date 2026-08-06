@@ -18,7 +18,7 @@ import { BASE_URL } from "../api/client";
 // NewDailyLogPage.jsx) treats "" as "unset" when deciding whether a row
 // is blank enough to drop, but not null, so a null default here would
 // make an otherwise-empty row always survive that filter.
-function emptyRow() {
+export function emptyRow() {
   return { start_time: "", end_time: "", caused_delay: false, evidence_id: "", comments: "" };
 }
 

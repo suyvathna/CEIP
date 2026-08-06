@@ -1,17 +1,18 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
+import Button from "@mui/material/Button";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { createDailyLog, getDailyLog, updateDailyLog } from "../api/dailyLogs";
+import { uploadEvidence } from "../api/evidence";
 import { todayLocalISODate } from "../utils/date";
-import RepeatableSectionTable from "../components/RepeatableSectionTable";
-import RainRecordsTable from "../components/RainRecordsTable";
+import RepeatableSectionTable, { emptyRow as emptySectionRow } from "../components/RepeatableSectionTable";
+import RainRecordsTable, { emptyRow as emptyRainRow } from "../components/RainRecordsTable";
+import StagedAttachments from "../components/StagedAttachments";
+import { PHOTO_CATEGORIES } from "../constants/photoCategories";
 
 const HSE_CATEGORIES = [
   "Toolbox Talk", "Incident", "Near Miss", "PPE Violation",
   "Housekeeping", "Inspection", "Other",
-];
-
-const SNAPSHOT_TIMES = [
-  "06:00 AM", "09:00 AM", "12:00 PM", "03:00 PM", "06:00 PM", "09:00 PM",
 ];
 
 const MANPOWER_COLUMNS = [
@@ -86,10 +87,6 @@ function emptyFlatState() {
   };
 }
 
-function emptySnapshot() {
-  return SNAPSHOT_TIMES.map((time) => ({ time, condition: "", temp_c: "" }));
-}
-
 function numOrNull(v) {
   if (v === "" || v === null || v === undefined) return null;
   const n = Number(v);
@@ -118,14 +115,14 @@ function NewDailyLogPage() {
   const isEdit = Boolean(dailyLogId);
 
   const [flat, setFlat] = useState(emptyFlatState());
-  const [snapshot, setSnapshot] = useState(emptySnapshot());
-  const [weatherObservations, setWeatherObservations] = useState([]);
-  const [manpowerEntries, setManpowerEntries] = useState([]);
-  const [equipmentEntries, setEquipmentEntries] = useState([]);
-  const [deliveryEntries, setDeliveryEntries] = useState([]);
-  const [inspectionEntries, setInspectionEntries] = useState([]);
-  const [hseEntries, setHseEntries] = useState([]);
-  const [visitorEntries, setVisitorEntries] = useState([]);
+  const [weatherObservations, setWeatherObservations] = useState(isEdit ? [] : [emptyRainRow()]);
+  const [manpowerEntries, setManpowerEntries] = useState(isEdit ? [] : [emptySectionRow(MANPOWER_COLUMNS)]);
+  const [equipmentEntries, setEquipmentEntries] = useState(isEdit ? [] : [emptySectionRow(EQUIPMENT_COLUMNS)]);
+  const [deliveryEntries, setDeliveryEntries] = useState(isEdit ? [] : [emptySectionRow(DELIVERY_COLUMNS)]);
+  const [inspectionEntries, setInspectionEntries] = useState(isEdit ? [] : [emptySectionRow(INSPECTION_COLUMNS)]);
+  const [hseEntries, setHseEntries] = useState(isEdit ? [] : [emptySectionRow(HSE_COLUMNS)]);
+  const [visitorEntries, setVisitorEntries] = useState(isEdit ? [] : [emptySectionRow(VISITOR_COLUMNS)]);
+  const [photos, setPhotos] = useState([]);
 
   const [loading, setLoading] = useState(isEdit);
   const [submitting, setSubmitting] = useState(false);
@@ -150,9 +147,6 @@ function NewDailyLogPage() {
           hse_notes: data.hse_notes ?? "",
           visitor_notes: data.visitor_notes ?? "",
         });
-        setSnapshot(
-          data.daily_snapshot?.length ? data.daily_snapshot : emptySnapshot()
-        );
         // evidence_id comes back as null (not "") for a row with no photo -
         // normalize it to "" so cleanRows' "is this row blank?" check
         // (which treats "" as unset but not null) works the same way for
@@ -178,10 +172,6 @@ function NewDailyLogPage() {
     setFlat({ ...flat, [e.target.name]: e.target.value });
   }
 
-  function updateSnapshotSlot(index, key, value) {
-    setSnapshot(snapshot.map((slot, i) => (i === index ? { ...slot, [key]: value } : slot)));
-  }
-
   async function handleSubmit(e) {
     e.preventDefault();
     setSubmitting(true);
@@ -193,9 +183,6 @@ function NewDailyLogPage() {
       event_id: eventId || null,
       temp_avg_c: numOrNull(flat.temp_avg_c),
       humidity_avg_pct: numOrNull(flat.humidity_avg_pct),
-      daily_snapshot: snapshot
-        .filter((s) => s.condition || s.temp_c !== "")
-        .map((s) => ({ ...s, temp_c: numOrNull(s.temp_c) })),
       weather_observations: cleanRows(weatherObservations),
       manpower_entries: cleanRows(manpowerEntries, ["workers_count", "hours"]),
       equipment_entries: cleanRows(equipmentEntries, ["hours_operating", "hours_idle"]),
@@ -206,13 +193,22 @@ function NewDailyLogPage() {
     };
 
     try {
+      let savedId = dailyLogId;
       if (isEdit) {
         await updateDailyLog(dailyLogId, payload);
-        navigate(`/projects/${projectId}/daily-log/${dailyLogId}`);
       } else {
-        const created = await createDailyLog(payload);
-        navigate(`/projects/${projectId}/daily-log/${created.id}`);
+        savedId = (await createDailyLog(payload)).id;
       }
+
+      for (const staged of photos) {
+        await uploadEvidence(
+          { dailyLogId: savedId },
+          staged.file,
+          { category: staged.category, caption: staged.caption }
+        );
+      }
+
+      navigate(`/projects/${projectId}/daily-log/${savedId}`);
     } catch (err) {
       setError(err.message);
       setSubmitting(false);
@@ -223,7 +219,15 @@ function NewDailyLogPage() {
 
   return (
     <div className="new-daily-log-page legacy-page">
-      <Link to={`/projects/${projectId}`}>&larr; Back to project</Link>
+      <Button
+        component={Link}
+        to={`/projects/${projectId}/report`}
+        size="small"
+        startIcon={<ArrowBackIcon fontSize="small" />}
+        sx={{ alignSelf: "flex-start" }}
+      >
+        Back to Site Records
+      </Button>
       <h1>{isEdit ? "Edit Daily Log" : "New Daily Log"}</h1>
       <p className="form-hint">
         Any event logged for this project on the same date links to this
@@ -245,66 +249,25 @@ function NewDailyLogPage() {
           from a Phnom Penh weather feed.
         </p>
 
-        <h2>Daily Snapshot</h2>
-        <table className="repeatable-table">
-          <thead>
-            <tr>
-              {SNAPSHOT_TIMES.map((t) => <th key={t}>{t}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              {snapshot.map((slot, i) => (
-                <td key={slot.time}>
-                  <input
-                    type="text"
-                    placeholder="Condition"
-                    value={slot.condition}
-                    onChange={(e) => updateSnapshotSlot(i, "condition", e.target.value)}
-                  />
-                  <input
-                    type="number"
-                    step="any"
-                    placeholder="°C"
-                    value={slot.temp_c}
-                    onChange={(e) => updateSnapshotSlot(i, "temp_c", e.target.value)}
-                  />
-                </td>
-              ))}
-            </tr>
-          </tbody>
-        </table>
-
         <h2>Rain Records</h2>
         <RainRecordsTable
           dailyLogId={isEdit ? dailyLogId : null}
           rows={weatherObservations}
           onChange={setWeatherObservations}
         />
-        {!isEdit && (
-          <p className="form-hint">
-            Photos can be attached to a rain record once this entry is
-            saved.
-          </p>
-        )}
 
-        <h2>Notes</h2>
-        <label>
-          Work completed / site activity today
-          <textarea name="work_completed" value={flat.work_completed} onChange={handleFlatChange} />
-        </label>
-        <label>
-          Delays
-          <textarea name="delays" value={flat.delays} onChange={handleFlatChange} />
-        </label>
-        <label>
-          Engineer instruction
-          <textarea name="engineer_instruction" value={flat.engineer_instruction} onChange={handleFlatChange} />
-        </label>
-        <label>
-          Plan for tomorrow
-          <textarea name="tomorrow_plan" value={flat.tomorrow_plan} onChange={handleFlatChange} />
-        </label>
+        <h2>Work completed / site activity today</h2>
+        <textarea name="work_completed" value={flat.work_completed} onChange={handleFlatChange} />
+
+        <h2>Delays</h2>
+        <textarea name="delays" value={flat.delays} onChange={handleFlatChange} />
+
+        <h2>Engineer instruction</h2>
+        <textarea name="engineer_instruction" value={flat.engineer_instruction} onChange={handleFlatChange} />
+
+        <h2>Plan for tomorrow</h2>
+        <textarea name="tomorrow_plan" value={flat.tomorrow_plan} onChange={handleFlatChange} />
+
         <label>
           Remarks
           <textarea name="remarks" value={flat.remarks} onChange={handleFlatChange} />
@@ -378,10 +341,8 @@ function NewDailyLogPage() {
           <textarea name="visitor_notes" value={flat.visitor_notes} onChange={handleFlatChange} />
         </label>
 
-        <p className="form-hint">
-          Photos can be added from the Daily Log page once this entry is
-          saved.
-        </p>
+        <h2>Photos</h2>
+        <StagedAttachments items={photos} onChange={setPhotos} categories={PHOTO_CATEGORIES} addLabel="+ Add photo" />
 
         {error && <p className="form-error">{error}</p>}
 

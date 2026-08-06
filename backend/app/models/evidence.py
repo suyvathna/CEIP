@@ -19,12 +19,14 @@ class Evidence(Base):
 
     # An attachment belongs to exactly one owner: an Event, a DailyLog
     # directly (for the Daily Log's own Photos section - a delivery photo,
-    # an inspection photo, a general site photo), or a Correspondence
-    # record (the scanned letter/email itself). All three nullable -
-    # forcing every attachment through an Event was exactly the friction
-    # that made the future camera-API import awkward, and the same is true
-    # of a letter that predates any Event it might relate to. Enforced as
-    # "exactly one of the three" in the service layer.
+    # an inspection photo, a general site photo), a Correspondence record
+    # (the scanned letter/email itself), or a ComplianceObligation (the
+    # scanned letter/transmittal proving a submission, or the basis for a
+    # waiver). All four nullable - forcing every attachment through an
+    # Event was exactly the friction that made the future camera-API
+    # import awkward, and the same is true of a letter that predates any
+    # Event it might relate to. Enforced as "exactly one of the four" in
+    # the service layer.
     event_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("events.id"),
@@ -40,6 +42,12 @@ class Evidence(Base):
     correspondence_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("correspondence.id"),
+        nullable=True,
+    )
+
+    obligation_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("compliance_obligations.id"),
         nullable=True,
     )
 

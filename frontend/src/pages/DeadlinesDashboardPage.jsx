@@ -12,7 +12,6 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
 import ToggleButton from "@mui/material/ToggleButton";
 import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
-import EngineChip from "../components/EngineChip";
 import EngineExplainer from "../components/EngineExplainer";
 import ProjectNav from "../components/ProjectNav";
 import { ENGINE_A, ENGINE_B, ENGINE_SHORT_LABELS } from "../utils/engines";
@@ -185,12 +184,6 @@ function DeadlinesDashboardPage() {
                             ? `${Math.abs(item.days_remaining)}d overdue`
                             : `${item.days_remaining}d left`
                         }
-                      />
-                      <EngineChip engine={item.engine} />
-                      <Chip
-                        size="small"
-                        variant="outlined"
-                        label={CATEGORY_LABELS[item.category] || item.category}
                       />
                       {item.reference && (
                         <Chip size="small" variant="outlined" label={item.reference} />

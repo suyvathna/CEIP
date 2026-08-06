@@ -48,16 +48,6 @@ def _child_rows(db: Session, daily_log_id: UUID, model) -> list:
 def _hydrate(db: Session, daily_log: DailyLog) -> DailyLog:
     daily_log.linked_event_ids = _linked_event_ids(db, daily_log.id)
 
-    # daily_snapshot is a nullable JSON column - any row that predates this
-    # field (i.e. every Daily Log migrated from the old flat Daily Diary
-    # schema) has NULL here, not []. Normalize it before it ever reaches
-    # the response schema, rather than relying on the schema alone to
-    # tolerate None - a NULL here previously crashed the whole endpoint
-    # with a response-validation error, which the browser reported as a
-    # bare "Failed to fetch".
-    if daily_log.daily_snapshot is None:
-        daily_log.daily_snapshot = []
-
     for field, model in _CHILD_TABLES.items():
         setattr(daily_log, field, _child_rows(db, daily_log.id, model))
 
@@ -130,21 +120,12 @@ def _replace_children(db: Session, daily_log_id: UUID, payload: dict) -> None:
             db.add(model(daily_log_id=daily_log_id, **row))
 
 
-def _snapshot_to_json(payload: dict) -> None:
-    snapshot = payload.get("daily_snapshot")
-    if snapshot is not None:
-        payload["daily_snapshot"] = [
-            slot if isinstance(slot, dict) else slot.model_dump() for slot in snapshot
-        ]
-
-
 def create_daily_log(
     db: Session,
     daily_log: DailyLogCreate,
 ):
     payload = daily_log.model_dump()
     additional_event_ids = payload.pop("additional_event_ids", [])
-    _snapshot_to_json(payload)
 
     db_daily_log = DailyLog(
         **{k: v for k, v in payload.items() if k not in _CHILD_TABLES}
@@ -229,7 +210,6 @@ def update_daily_log(db: Session, daily_log_id: UUID, daily_log: DailyLogCreate)
 
     payload = daily_log.model_dump()
     additional_event_ids = set(payload.pop("additional_event_ids", []))
-    _snapshot_to_json(payload)
 
     _replace_children(db, daily_log_id, payload)
 

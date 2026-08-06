@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link as RouterLink } from "react-router-dom";
+import { useParams, useSearchParams, Link as RouterLink } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import Typography from "@mui/material/Typography";
 import Stack from "@mui/material/Stack";
@@ -16,10 +16,14 @@ import Radio from "@mui/material/Radio";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import FormLabel from "@mui/material/FormLabel";
 import Checkbox from "@mui/material/Checkbox";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
+import Chip from "@mui/material/Chip";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import TableChartIcon from "@mui/icons-material/TableChart";
 import DataObjectIcon from "@mui/icons-material/DataObject";
+import AddIcon from "@mui/icons-material/Add";
 import {
   getProjectReport,
   reportExportUrl,
@@ -31,7 +35,10 @@ import {
   projectDailyLogReportPdfUrl,
   projectDailyLogReportExcelUrl,
 } from "../api/dailyLogs";
+import { getProjectEvents } from "../api/events";
 import ProjectNav from "../components/ProjectNav";
+import EventList from "../components/EventList";
+import DailyLogList from "../components/DailyLogList";
 
 // Every tile links back into the project's Events/Daily Log tabs,
 // pre-filtered - e.g. clicking "High Severity" jumps straight to the
@@ -228,17 +235,52 @@ function DailyLogExportPanel({ projectId }) {
 
 function ProjectReportPage() {
   const { projectId } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Derived straight from the URL on every render (not local state) so
+  // that a Stat tile linking to this same route with a different ?tab=/
+  // ?severity= doesn't go stale - React Router keeps this component
+  // mounted across a same-route navigation, so a useState initializer
+  // would only have picked up the params once and never again.
+  const activityTab = searchParams.get("tab") || "events";
+  const severityFilter = searchParams.get("severity");
+  const statusFilter = searchParams.get("status");
+  const hasEventFilter = Boolean(severityFilter || statusFilter);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["projectReport", projectId],
     queryFn: () => getProjectReport(projectId),
   });
 
+  const eventsQuery = useQuery({
+    queryKey: ["projectEvents", projectId],
+    queryFn: () => getProjectEvents(projectId),
+    enabled: activityTab === "events",
+  });
+
+  const dailyLogsQuery = useQuery({
+    queryKey: ["projectDailyLogs", projectId],
+    queryFn: () => getProjectDailyLogs(projectId),
+    enabled: activityTab === "dailyLog",
+  });
+
+  function setActivityTab(tab) {
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", tab);
+    setSearchParams(next);
+  }
+
+  function clearEventFilter() {
+    const next = new URLSearchParams(searchParams);
+    next.delete("severity");
+    next.delete("status");
+    setSearchParams(next);
+  }
+
   if (isLoading) return <CircularProgress />;
   if (isError) return <Alert severity="error">{error.message}</Alert>;
 
-  const eventsBase = `/projects/${projectId}?tab=events`;
-  const dailyLogLink = `/projects/${projectId}?tab=dailyLog`;
+  const eventsBase = `/projects/${projectId}/report?tab=events`;
+  const dailyLogLink = `/projects/${projectId}/report?tab=dailyLog`;
 
   return (
     <Stack spacing={2}>
@@ -265,7 +307,7 @@ function ProjectReportPage() {
       >
         <div>
           <Typography variant="h4" fontWeight={700}>
-            {data.project_name} — Report
+            {data.project_name} — Site Records
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Generated {new Date(data.generated_at).toLocaleString()}
@@ -338,6 +380,78 @@ function ProjectReportPage() {
         </Typography>
         <DailyLogExportPanel projectId={projectId} />
       </Paper>
+
+      <Stack
+        direction="row"
+        sx={{ justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1 }}
+      >
+        <Tabs value={activityTab} onChange={(_, v) => setActivityTab(v)}>
+          <Tab value="events" label="Events" />
+          <Tab value="dailyLog" label="Daily Log" />
+        </Tabs>
+        <Stack direction="row" spacing={1}>
+          <Button
+            component={RouterLink}
+            to={`/projects/${projectId}/daily-log/new`}
+            startIcon={<AddIcon fontSize="small" />}
+            variant="outlined"
+          >
+            New Daily Log
+          </Button>
+          <Button
+            component={RouterLink}
+            to={`/projects/${projectId}/events/new`}
+            startIcon={<AddIcon fontSize="small" />}
+            variant="contained"
+          >
+            New Event
+          </Button>
+        </Stack>
+      </Stack>
+
+      {activityTab === "events" && (
+        <>
+          {hasEventFilter && (
+            <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+              {severityFilter && (
+                <Chip size="small" label={`Severity: ${severityFilter}`} />
+              )}
+              {statusFilter && (
+                <Chip size="small" label={`Status: ${statusFilter}`} />
+              )}
+              <Button size="small" onClick={clearEventFilter}>
+                Clear filter
+              </Button>
+            </Stack>
+          )}
+          {eventsQuery.isLoading && <CircularProgress size={24} />}
+          {eventsQuery.isError && (
+            <Alert severity="error">{eventsQuery.error.message}</Alert>
+          )}
+          {eventsQuery.data && (
+            <EventList
+              projectId={projectId}
+              events={eventsQuery.data.filter(
+                (event) =>
+                  (!severityFilter || event.severity === severityFilter) &&
+                  (!statusFilter || event.status === statusFilter)
+              )}
+            />
+          )}
+        </>
+      )}
+
+      {activityTab === "dailyLog" && (
+        <>
+          {dailyLogsQuery.isLoading && <CircularProgress size={24} />}
+          {dailyLogsQuery.isError && (
+            <Alert severity="error">{dailyLogsQuery.error.message}</Alert>
+          )}
+          {dailyLogsQuery.data && (
+            <DailyLogList projectId={projectId} dailyLogs={dailyLogsQuery.data} />
+          )}
+        </>
+      )}
     </Stack>
   );
 }

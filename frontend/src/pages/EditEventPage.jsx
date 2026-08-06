@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
+import Button from "@mui/material/Button";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { getEvent, updateEvent } from "../api/events";
 
 // Must match app.constants.event_types.EventType on the backend exactly -
@@ -85,7 +87,15 @@ function EditEventPage() {
 
   return (
     <div className="edit-event-page legacy-page">
-      <Link to={`/projects/${projectId}/events/${eventId}`}>&larr; Back to event</Link>
+      <Button
+        component={Link}
+        to={`/projects/${projectId}/events/${eventId}`}
+        size="small"
+        startIcon={<ArrowBackIcon fontSize="small" />}
+        sx={{ alignSelf: "flex-start" }}
+      >
+        Back to event
+      </Button>
       <h1>Edit Event</h1>
       <form onSubmit={handleSubmit}>
         <label>

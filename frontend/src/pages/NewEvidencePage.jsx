@@ -1,14 +1,9 @@
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
+import Button from "@mui/material/Button";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { uploadEvidence } from "../api/evidence";
-
-// PhotoCategory on the backend (app/constants/photo_category.py) - kept
-// in sync by hand since this is the only place on the frontend that
-// needs the full list.
-const PHOTO_CATEGORIES = [
-  "General", "Manpower", "Equipment", "Delivery", "Inspection", "HSE",
-  "Weather", "Visitor",
-];
+import { PHOTO_CATEGORIES } from "../constants/photoCategories";
 
 function NewEvidencePage() {
   const { projectId, eventId, dailyLogId, correspondenceId } = useParams();
@@ -53,7 +48,15 @@ function NewEvidencePage() {
 
   return (
     <div className="new-evidence-page legacy-page">
-      <Link to={backTo}>&larr; Back</Link>
+      <Button
+        component={Link}
+        to={backTo}
+        size="small"
+        startIcon={<ArrowBackIcon fontSize="small" />}
+        sx={{ alignSelf: "flex-start" }}
+      >
+        Back
+      </Button>
       <h1>Add Photo / Attachment</h1>
       <form onSubmit={handleSubmit}>
         <label>

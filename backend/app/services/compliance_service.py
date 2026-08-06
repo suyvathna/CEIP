@@ -895,7 +895,11 @@ def mark_submitted(
 
 
 def waive(
-    db: Session, obligation_id: UUID, reason: str
+    db: Session,
+    obligation_id: UUID,
+    reason: str,
+    *,
+    evidence_id: UUID | None = None,
 ) -> ComplianceObligation | None:
     """
     Mark a rule as not applying to this contract. Survives every
@@ -908,6 +912,14 @@ def waive(
 
     obligation.status = ObligationStatus.WAIVED.value
     obligation.waived_reason = reason
+
+    if evidence_id is not None:
+        obligation.evidence_id = evidence_id
+        evidence = db.get(Evidence, evidence_id)
+        if evidence is not None:
+            # Same rule mark_submitted already applies: once a document is
+            # the basis for a register decision, it stops being deletable.
+            evidence.is_locked = True
 
     notification_service.resolve_source(
         db,

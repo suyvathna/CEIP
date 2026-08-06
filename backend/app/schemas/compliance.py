@@ -114,6 +114,7 @@ class ObligationWaiveRequest(BaseModel):
     # indistinguishable from someone clearing an inconvenient row, and
     # this register is meant to survive being read back in a dispute.
     reason: str
+    evidence_id: UUID | None = None
 
 
 class ComplianceRunOut(BaseModel):
@@ -131,12 +132,6 @@ class ComplianceRunOut(BaseModel):
     finished_at: datetime | None
 
     model_config = ConfigDict(from_attributes=True)
-
-
-class ComplianceTickOut(BaseModel):
-    ran: bool
-    detail: str
-    run: ComplianceRunOut | None = None
 
 
 class RegenerateResultOut(BaseModel):

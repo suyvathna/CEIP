@@ -31,6 +31,7 @@ import Grid from "@mui/material/Grid";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import AttachFileIcon from "@mui/icons-material/AttachFile";
 import ProjectNav from "../components/ProjectNav";
 import { todayLocalISODate } from "../utils/date";
 import {
@@ -39,11 +40,11 @@ import {
   getEventDrivenRules,
   regenerateRegister,
   reopenObligation,
-  runComplianceTick,
   submitObligation,
   waiveObligation,
 } from "../api/compliance";
 import { getProject, updateProjectMilestones } from "../api/projects";
+import { uploadEvidence } from "../api/evidence";
 
 const STATUS_COLORS = {
   Pending: "default",
@@ -195,15 +196,24 @@ function SubmitDialog({ obligation, onClose, projectId }) {
   const [submittedDate, setSubmittedDate] = useState(todayLocalISODate());
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
+  const [file, setFile] = useState(null);
   const [error, setError] = useState(null);
 
   const mutation = useMutation({
-    mutationFn: () =>
-      submitObligation(obligation.id, {
+    mutationFn: async () => {
+      // Uploaded first, ownerless until it's attached below, so a failed
+      // submit doesn't leave a half-recorded obligation - only a stray
+      // Evidence row, which is harmless and never surfaced anywhere.
+      const evidence = file
+        ? await uploadEvidence({ obligationId: obligation.id }, file)
+        : null;
+      return submitObligation(obligation.id, {
         submitted_date: submittedDate,
         submitted_reference: reference || null,
+        evidence_id: evidence?.id || null,
         notes: notes || null,
-      }),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["complianceRegister", projectId] });
       queryClient.invalidateQueries({ queryKey: ["notificationSummary"] });
@@ -250,6 +260,27 @@ function SubmitDialog({ obligation, onClose, projectId }) {
             onChange={(e) => setReference(e.target.value)}
           />
 
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+            <Button component="label" variant="outlined" size="small" startIcon={<AttachFileIcon fontSize="small" />}>
+              {file ? "Replace file" : "Upload scanned letter / transmittal"}
+              <input
+                type="file"
+                hidden
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+              />
+            </Button>
+            {file && (
+              <>
+                <Typography variant="body2" color="text.secondary">
+                  {file.name}
+                </Typography>
+                <Button size="small" onClick={() => setFile(null)}>
+                  Remove
+                </Button>
+              </>
+            )}
+          </Stack>
+
           <TextField
             label="Notes"
             multiline
@@ -276,10 +307,19 @@ function SubmitDialog({ obligation, onClose, projectId }) {
 function WaiveDialog({ obligation, onClose, projectId }) {
   const queryClient = useQueryClient();
   const [reason, setReason] = useState("");
+  const [file, setFile] = useState(null);
   const [error, setError] = useState(null);
 
   const mutation = useMutation({
-    mutationFn: () => waiveObligation(obligation.id, reason),
+    mutationFn: async () => {
+      const evidence = file
+        ? await uploadEvidence({ obligationId: obligation.id }, file)
+        : null;
+      return waiveObligation(obligation.id, {
+        reason,
+        evidence_id: evidence?.id || null,
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["complianceRegister", projectId] });
       queryClient.invalidateQueries({ queryKey: ["notificationSummary"] });
@@ -312,6 +352,27 @@ function WaiveDialog({ obligation, onClose, projectId }) {
             onChange={(e) => setReason(e.target.value)}
             helperText="Required. A waiver with no stated reason is indistinguishable from someone clearing an inconvenient row, and this register is meant to survive being read back in a dispute."
           />
+
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+            <Button component="label" variant="outlined" size="small" startIcon={<AttachFileIcon fontSize="small" />}>
+              {file ? "Replace file" : "Upload supporting document (optional)"}
+              <input
+                type="file"
+                hidden
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+              />
+            </Button>
+            {file && (
+              <>
+                <Typography variant="body2" color="text.secondary">
+                  {file.name}
+                </Typography>
+                <Button size="small" onClick={() => setFile(null)}>
+                  Remove
+                </Button>
+              </>
+            )}
+          </Stack>
         </Stack>
       </DialogContent>
       <DialogActions>
@@ -481,23 +542,6 @@ function CompliancePage() {
     onError: (e) => setActionError(e.message),
   });
 
-  const tickMutation = useMutation({
-    mutationFn: runComplianceTick,
-    onSuccess: (result) => {
-      invalidate();
-      setActionError(null);
-      const run = result.run;
-      setActionResult(
-        result.ran && run
-          ? `Sweep completed across ${run.projects_processed} project(s): ` +
-              `${run.obligations_created} added, ${run.obligations_updated} updated, ` +
-              `${run.notifications_created} alert(s) raised, ${run.notifications_resolved} retired.`
-          : result.detail
-      );
-    },
-    onError: (e) => setActionError(e.message),
-  });
-
   const reopenMutation = useMutation({
     mutationFn: reopenObligation,
     onSuccess: () => {
@@ -537,10 +581,9 @@ function CompliancePage() {
           </Typography>
         </Stack>
         <Stack direction="row" spacing={1}>
-          {/* "Rebuild" and "Run sweep now" were engineer words for two
-              things that looked identical from outside: both appeared to
-              do nothing. Named for what they change, and both now report
-              their result. */}
+          {/* "Rebuild" was an engineer word for something that looked
+              like it did nothing from outside. Named for what it
+              changes, and reports its result. */}
           <Tooltip title="Recompute every deadline on THIS project from its contract milestones. Use after editing the milestones above.">
             <span>
               <Button
@@ -552,18 +595,6 @@ function CompliancePage() {
                 {regenerateMutation.isPending
                   ? "Recalculating…"
                   : "Recalculate this project"}
-              </Button>
-            </span>
-          </Tooltip>
-          <Tooltip title="Run the daily check across ALL projects now, instead of waiting for 06:00. Raises new alerts and retires ones that no longer apply.">
-            <span>
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={() => tickMutation.mutate()}
-                disabled={tickMutation.isPending}
-              >
-                {tickMutation.isPending ? "Checking…" : "Check all projects now"}
               </Button>
             </span>
           </Tooltip>
@@ -614,19 +645,6 @@ function CompliancePage() {
             <Chip color="warning" variant="outlined" label={`${summary.submitted_late} late`} />
             <Chip variant="outlined" label={`${summary.waived} waived`} />
           </Stack>
-
-          {/* Separating these is the difference between "18 open" reading
-              as a crisis and reading as "3 things to do, plus a backlog
-              from before we started using the platform". */}
-          {summary.historical_open > 0 && (
-            <Alert severity="info">
-              {summary.historical_open} of these fell due{" "}
-              <strong>before this project was added to CEIP</strong>. They are
-              kept in the register so you can record what was actually
-              submitted or waive what never applied, but they do not raise
-              individual alerts — one summary alert covers the whole backlog.
-            </Alert>
-          )}
         </Stack>
       )}
 
@@ -689,18 +707,6 @@ function CompliancePage() {
                       <Tooltip title={rule?.description || ""}>
                         <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
                           <Typography variant="body2">{row.title}</Typography>
-                          {/* Missing this forfeits an entitlement
-                              outright rather than merely being a breach —
-                              worth flagging in the register itself, not
-                              only in the alert. */}
-                          {row.rights_destroying && (
-                            <Chip size="small" color="error" variant="outlined" label="Time-bar" />
-                          )}
-                          {row.is_historical && (
-                            <Tooltip title="Fell due before this project was added to CEIP. Recorded as history — it does not raise its own alert.">
-                              <Chip size="small" variant="outlined" label="Pre-CEIP" />
-                            </Tooltip>
-                          )}
                         </Stack>
                       </Tooltip>
                     </TableCell>

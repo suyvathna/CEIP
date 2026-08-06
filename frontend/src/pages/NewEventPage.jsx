@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
+import Button from "@mui/material/Button";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { createEvent } from "../api/events";
+import { uploadEvidence } from "../api/evidence";
 import { todayLocalISODate, nowLocalTime } from "../utils/date";
+import StagedAttachments from "../components/StagedAttachments";
 
 // Must match app.constants.event_types.EventType on the backend exactly -
 // the API validates event_type as a strict enum, so a mismatch here
@@ -64,6 +68,7 @@ const initialFormState = {
 function NewEventPage() {
   const { projectId } = useParams();
   const [formData, setFormData] = useState(initialFormState);
+  const [photos, setPhotos] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
@@ -77,8 +82,11 @@ function NewEventPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await createEvent({ ...formData, project_id: projectId });
-      navigate(`/projects/${projectId}`);
+      const created = await createEvent({ ...formData, project_id: projectId });
+      for (const staged of photos) {
+        await uploadEvidence({ eventId: created.id }, staged.file);
+      }
+      navigate(`/projects/${projectId}/events/${created.id}`);
     } catch (err) {
       setError(err.message);
       setSubmitting(false);
@@ -87,7 +95,15 @@ function NewEventPage() {
 
   return (
     <div className="new-event-page legacy-page">
-      <Link to={`/projects/${projectId}`}>&larr; Back to project</Link>
+      <Button
+        component={Link}
+        to={`/projects/${projectId}/report`}
+        size="small"
+        startIcon={<ArrowBackIcon fontSize="small" />}
+        sx={{ alignSelf: "flex-start" }}
+      >
+        Back to Site Records
+      </Button>
       <h1>New Event</h1>
       <form onSubmit={handleSubmit}>
         <label>
@@ -139,6 +155,9 @@ function NewEventPage() {
           Location
           <input name="location" value={formData.location} onChange={handleChange} />
         </label>
+
+        <h2>Photos</h2>
+        <StagedAttachments items={photos} onChange={setPhotos} addLabel="+ Add photo / attachment" />
 
         {error && <p className="form-error">{error}</p>}
 

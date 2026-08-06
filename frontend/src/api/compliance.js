@@ -38,10 +38,10 @@ export function submitObligation(obligationId, data) {
   });
 }
 
-export function waiveObligation(obligationId, reason) {
+export function waiveObligation(obligationId, data) {
   return apiRequest(`/compliance/obligations/${obligationId}/waive`, {
     method: "PATCH",
-    body: JSON.stringify({ reason }),
+    body: JSON.stringify(data),
   });
 }
 
@@ -67,14 +67,6 @@ export function getDeadlineFeed({ projectId, withinDays } = {}) {
   }
   const query = params.toString() ? `?${params.toString()}` : "";
   return apiRequest(`/compliance/deadlines${query}`);
-}
-
-// Runs the daily sweep on demand. Idempotent server-side (obligations
-// dedupe on project+rule+period, alerts on their dedupe key, and a
-// Postgres advisory lock stops two callers overlapping), so a PM who
-// clicks it twice loses nothing.
-export function runComplianceTick() {
-  return apiRequest("/compliance/tick", { method: "POST" });
 }
 
 export function getComplianceRuns(limit = 20) {

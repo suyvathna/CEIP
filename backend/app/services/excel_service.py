@@ -60,14 +60,6 @@ def _write_daily_log_sheet(sheet, report: dict):
     )
     sheet.append([])
 
-    snapshot = report.get("daily_snapshot") or []
-    if snapshot:
-        sheet.append(["DAILY SNAPSHOT"])
-        sheet.append([slot.get("time", "") for slot in snapshot])
-        sheet.append([slot.get("condition", "") for slot in snapshot])
-        sheet.append([slot.get("temp_c", "") for slot in snapshot])
-        sheet.append([])
-
     weather_obs = report.get("weather_observations") or []
     if weather_obs:
         evidence_by_id = {e.id: e for e in (report.get("evidence") or [])}

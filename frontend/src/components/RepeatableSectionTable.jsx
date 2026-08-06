@@ -5,7 +5,7 @@
  * instead of seven near-identical bespoke forms - adding a new log
  * section later means adding a columns array, not a new component.
  */
-function emptyRow(columns) {
+export function emptyRow(columns) {
   const row = {};
   columns.forEach((col) => {
     row[col.key] = col.type === "checkbox" ? false : "";

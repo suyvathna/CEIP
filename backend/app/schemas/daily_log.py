@@ -4,14 +4,6 @@ from uuid import UUID
 from pydantic import BaseModel
 
 
-# --- Daily Snapshot ---------------------------------------------------------
-
-class DailySnapshotSlot(BaseModel):
-    time: str
-    condition: str | None = None
-    temp_c: float | None = None
-
-
 # --- Rain Records --------------------------------------------------------
 
 class WeatherObservationCreate(BaseModel):
@@ -135,8 +127,6 @@ class DailyLogCreate(BaseModel):
     temp_avg_c: float | None = None
     humidity_avg_pct: int | None = None
 
-    daily_snapshot: list[DailySnapshotSlot] = []
-
     # Notes
     work_completed: str | None = None
     delays: str | None = None
@@ -172,17 +162,6 @@ class DailyLogResponse(BaseModel):
 
     temp_avg_c: float | None
     humidity_avg_pct: int | None
-
-    # Nullable in the database (any Daily Log row that predates this field -
-    # i.e. every diary entry migrated from the old flat schema - has NULL
-    # here, not []), so this has to accept None even though the API
-    # always normalizes it to a list before returning (see
-    # daily_log_service._hydrate). Declaring it as list-only here is what
-    # previously caused a ResponseValidationError - and a "Failed to
-    # fetch" in the browser, since the crash happens after the CORS
-    # middleware has already let the request through - for every project
-    # with pre-existing Daily Log/Diary entries.
-    daily_snapshot: list[DailySnapshotSlot] | None = []
 
     work_completed: str | None
     delays: str | None

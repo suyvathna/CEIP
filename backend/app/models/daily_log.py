@@ -3,7 +3,7 @@ from datetime import date, datetime
 
 
 from sqlalchemy import Date, DateTime, ForeignKey, Numeric, Text, func
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -14,10 +14,10 @@ class DailyLog(Base):
     Formerly "Daily Diary". Renamed to "Daily Log" to match the paper/PDF
     site-diary format Cambodian contractors already produce daily (see
     the project's reference template), and restructured so each of that
-    template's sections - Weather Report, Daily Snapshot, Observed
-    Weather Conditions, Manpower/Equipment/Delivery/Inspection logs, HSE,
-    Visitors, Photos - has a real home in the data model instead of being
-    flattened into a handful of free-text boxes.
+    template's sections - Weather Report, Rain Records, Manpower/
+    Equipment/Delivery/Inspection logs, HSE, Visitors, Photos - has a real
+    home in the data model instead of being flattened into a handful of
+    free-text boxes.
     """
 
     __tablename__ = "daily_logs"
@@ -57,14 +57,6 @@ class DailyLog(Base):
     # ("Rain Records") below instead.
     temp_avg_c: Mapped[float | None] = mapped_column(Numeric(4, 1))
     humidity_avg_pct: Mapped[int | None] = mapped_column()
-
-    # --- Daily Snapshot ---------------------------------------------------
-    # The template's 6-slot hourly forecast strip (06:00, 09:00, ... 21:00),
-    # each slot a {"time": "06:00 AM", "condition": "Cloudy", "temp_c": 25}
-    # object. Stored as JSON rather than a child table because it's a
-    # fixed-shape, display-only snapshot, not something queried or
-    # reported on individually.
-    daily_snapshot: Mapped[list | None] = mapped_column(JSONB)
 
     # --- Notes (site activity / plan) -------------------------------------
     work_completed: Mapped[str | None] = mapped_column(Text)

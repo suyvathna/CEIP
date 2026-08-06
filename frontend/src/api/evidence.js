@@ -1,14 +1,16 @@
 import { apiRequest } from "./client";
 
-// owner is { eventId }, { dailyLogId } or { correspondenceId } - exactly
-// one. category/caption are optional and mainly useful for Daily Log
-// photos (bucketing a photo into a section, e.g. "Delivery" or "HSE" -
-// the same field a future camera-API import would set automatically).
+// owner is { eventId }, { dailyLogId }, { correspondenceId } or
+// { obligationId } - exactly one. category/caption are optional and
+// mainly useful for Daily Log photos (bucketing a photo into a section,
+// e.g. "Delivery" or "HSE" - the same field a future camera-API import
+// would set automatically).
 export function uploadEvidence(owner, file, { category, caption } = {}) {
   const formData = new FormData();
   if (owner.eventId) formData.append("event_id", owner.eventId);
   if (owner.dailyLogId) formData.append("daily_log_id", owner.dailyLogId);
   if (owner.correspondenceId) formData.append("correspondence_id", owner.correspondenceId);
+  if (owner.obligationId) formData.append("obligation_id", owner.obligationId);
   if (category) formData.append("category", category);
   if (caption) formData.append("caption", caption);
   formData.append("file", file);
