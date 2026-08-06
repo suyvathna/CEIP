@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.models.evidence import Evidence
@@ -37,6 +37,15 @@ def delete_evidence(db: Session, evidence: Evidence):
             "This evidence is locked because it's attached to a submitted "
             "claim and can no longer be deleted."
         )
+
+    # Every upload/view/download logs an EvidenceAccessLog row (see
+    # log_access below), and that FK has no ON DELETE clause - so without
+    # clearing these first, db.delete(evidence) below fails its very
+    # first commit for literally every piece of evidence, every time
+    # (the "UPLOAD" log row alone guarantees at least one match). The
+    # audit trail itself isn't worth keeping once the file it's about is
+    # gone.
+    db.execute(delete(EvidenceAccessLog).where(EvidenceAccessLog.evidence_id == evidence.id))
 
     db.delete(evidence)
     db.commit()
