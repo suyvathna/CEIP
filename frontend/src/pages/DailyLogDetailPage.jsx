@@ -359,9 +359,7 @@ function DailyLogDetailPage() {
         </Stack>
         {evidence.length === 0 ? (
           <Typography color="text.secondary">
-            No photos yet. Photos added here (or, in future, imported
-            automatically from a site camera) show up under the section
-            they're tagged with.
+            No photos yet.
           </Typography>
         ) : (
           <Grid container spacing={2}>
@@ -381,7 +379,6 @@ function DailyLogDetailPage() {
                       {item.filename}
                     </a>
                   )}
-                  {item.category && <Chip size="small" label={item.category} sx={{ mt: 1 }} />}
                   {item.caption && <Typography variant="caption" display="block">{item.caption}</Typography>}
                   {item.is_locked ? (
                     <Chip size="small" label="Locked" sx={{ mt: 1 }} />

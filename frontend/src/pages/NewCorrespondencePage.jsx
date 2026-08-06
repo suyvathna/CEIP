@@ -17,8 +17,8 @@ import { createCorrespondence } from "../api/correspondence";
 import { uploadEvidence } from "../api/evidence";
 
 const DIRECTIONS = [
-  { value: "Outgoing", label: "Outgoing — Contractor to Engineer" },
-  { value: "Incoming", label: "Incoming — Engineer to Contractor" },
+  { value: "Outgoing", label: "Outgoing" },
+  { value: "Incoming", label: "Incoming" },
 ];
 
 const METHODS = ["Email", "Letter", "Fax", "Hand Delivery", "Site Memo", "Other"];

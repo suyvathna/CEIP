@@ -3,12 +3,10 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import Button from "@mui/material/Button";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { uploadEvidence } from "../api/evidence";
-import { PHOTO_CATEGORIES } from "../constants/photoCategories";
 
 function NewEvidencePage() {
   const { projectId, eventId, dailyLogId, correspondenceId } = useParams();
   const [file, setFile] = useState(null);
-  const [category, setCategory] = useState("General");
   const [caption, setCaption] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -38,7 +36,7 @@ function NewEvidencePage() {
         : correspondenceId
           ? { correspondenceId }
           : { dailyLogId };
-      await uploadEvidence(owner, file, dailyLogId ? { category, caption } : {});
+      await uploadEvidence(owner, file, dailyLogId ? { caption } : {});
       navigate(backTo);
     } catch (err) {
       setError(err.message);
@@ -65,25 +63,15 @@ function NewEvidencePage() {
         </label>
 
         {dailyLogId && (
-          <>
-            <label>
-              Section
-              <select value={category} onChange={(e) => setCategory(e.target.value)}>
-                {PHOTO_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Caption
-              <input
-                type="text"
-                value={caption}
-                onChange={(e) => setCaption(e.target.value)}
-                placeholder="e.g. V6 props (support) installation"
-              />
-            </label>
-          </>
+          <label>
+            Caption
+            <input
+              type="text"
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              placeholder="e.g. V6 props (support) installation"
+            />
+          </label>
         )}
 
         {error && <p className="form-error">{error}</p>}

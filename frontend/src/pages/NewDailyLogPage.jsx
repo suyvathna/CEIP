@@ -8,7 +8,6 @@ import { todayLocalISODate } from "../utils/date";
 import RepeatableSectionTable, { emptyRow as emptySectionRow } from "../components/RepeatableSectionTable";
 import RainRecordsTable, { emptyRow as emptyRainRow } from "../components/RainRecordsTable";
 import StagedAttachments from "../components/StagedAttachments";
-import { PHOTO_CATEGORIES } from "../constants/photoCategories";
 
 const HSE_CATEGORIES = [
   "Toolbox Talk", "Incident", "Near Miss", "PPE Violation",
@@ -204,7 +203,7 @@ function NewDailyLogPage() {
         await uploadEvidence(
           { dailyLogId: savedId },
           staged.file,
-          { category: staged.category, caption: staged.caption }
+          { caption: staged.caption }
         );
       }
 
@@ -342,7 +341,7 @@ function NewDailyLogPage() {
         </label>
 
         <h2>Photos</h2>
-        <StagedAttachments items={photos} onChange={setPhotos} categories={PHOTO_CATEGORIES} addLabel="+ Add photo" />
+        <StagedAttachments items={photos} onChange={setPhotos} showCaption addLabel="+ Add photo" />
 
         {error && <p className="form-error">{error}</p>}
 

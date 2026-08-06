@@ -4,7 +4,7 @@ let nextStagedId = 0;
 
 function toStagedFile(file) {
   nextStagedId += 1;
-  return { id: nextStagedId, file, category: "General", caption: "" };
+  return { id: nextStagedId, file, caption: "" };
 }
 
 /**
@@ -12,11 +12,10 @@ function toStagedFile(file) {
  * (New Event / New Daily Log Photos, New Correspondence reference docs).
  * Files just sit in local state here - the caller uploads them (via
  * uploadEvidence) once the parent record exists and has an id, then
- * discards this list. Pass `categories` (see constants/photoCategories.js)
- * to show a per-file Section dropdown + caption field; omit it for a
- * plain filename + remove list.
+ * discards this list. Pass `showCaption` to add a per-file caption field;
+ * omit it for a plain filename + remove list.
  */
-function StagedAttachments({ items, onChange, categories, addLabel = "+ Add file" }) {
+function StagedAttachments({ items, onChange, showCaption, addLabel = "+ Add file" }) {
   const inputRef = useRef(null);
 
   function handleFilesSelected(e) {
@@ -41,8 +40,7 @@ function StagedAttachments({ items, onChange, categories, addLabel = "+ Add file
           <thead>
             <tr>
               <th>File</th>
-              {categories && <th>Section</th>}
-              {categories && <th>Caption</th>}
+              {showCaption && <th>Caption</th>}
               <th></th>
             </tr>
           </thead>
@@ -50,19 +48,7 @@ function StagedAttachments({ items, onChange, categories, addLabel = "+ Add file
             {items.map((item) => (
               <tr key={item.id}>
                 <td>{item.file.name}</td>
-                {categories && (
-                  <td>
-                    <select
-                      value={item.category}
-                      onChange={(e) => updateItem(item.id, { category: e.target.value })}
-                    >
-                      {categories.map((c) => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-                  </td>
-                )}
-                {categories && (
+                {showCaption && (
                   <td>
                     <input
                       type="text"
