@@ -487,6 +487,70 @@ def _obligation_link(project_id: UUID, obligation_id: UUID | None = None) -> str
     return f"{base}?highlight={obligation_id}" if obligation_id else base
 
 
+def _emit_obligation_alert(
+    db: Session, project: Project, row: ComplianceObligation, today: date, lead_days: int
+) -> bool:
+    """
+    Raise (or re-raise) the standard "this is due" alert for one
+    obligation. Extracted from alert_obligations' loop so reopen() below
+    can call it directly for a single row - immediately, instead of
+    waiting for the next scheduled tick to notice the obligation is open
+    again. Returns whether a row was actually inserted (see
+    notification_service.emit).
+    """
+    days_remaining = (row.due_date - today).days
+    severity = severity_for_days_remaining(
+        days_remaining,
+        lead_days,
+        rights_destroying=row.rights_destroying,
+    )
+
+    rule = RULES_BY_KEY.get(row.rule_key)
+    period_label = f" ({row.period_key})" if row.period_key != ONE_OFF_PERIOD else ""
+
+    if days_remaining < 0:
+        when = f"was due {abs(days_remaining)} day(s) ago"
+    elif days_remaining == 0:
+        when = "is due today"
+    else:
+        when = f"is due in {days_remaining} day(s)"
+
+    if row.owed_by != "Contractor":
+        body = (
+            f"{row.clause_code}: the {row.owed_by}'s obligation "
+            f"\"{row.title}\"{period_label} {when} "
+            f"({row.due_date.isoformat()}). A missed deadline here is "
+            f"itself a claim ground - log an Event rather than only "
+            f"chasing it informally."
+        )
+    else:
+        body = (
+            f"{row.clause_code}: \"{row.title}\"{period_label} {when} "
+            f"({row.due_date.isoformat()})."
+        )
+        if rule is not None and rule.rights_destroying:
+            body += " Missing this deadline forfeits an entitlement outright."
+
+    return notification_service.emit(
+        db,
+        project_id=project.id,
+        category=NotificationCategory.COMPLIANCE,
+        severity=severity,
+        title=f"{row.clause_code} - {row.title}{period_label}",
+        body=body,
+        clause_code=row.clause_code,
+        source_type="obligation",
+        source_id=row.id,
+        stage="due",
+        link_path=_obligation_link(project.id, row.id),
+        due_date=row.due_date,
+        days_remaining=days_remaining,
+        dedupe_key=notification_service.build_dedupe_key(
+            "obligation", row.id, "due", severity.value, row.due_date
+        ),
+    )
+
+
 def alert_obligations(
     db: Session, project: Project, today: date | None = None
 ) -> int:
@@ -512,57 +576,7 @@ def alert_obligations(
     raised = _alert_historical_backlog(db, project, today)
 
     for row in rows:
-        days_remaining = (row.due_date - today).days
-        severity = severity_for_days_remaining(
-            days_remaining,
-            lead_days,
-            rights_destroying=row.rights_destroying,
-        )
-
-        rule = RULES_BY_KEY.get(row.rule_key)
-        period_label = f" ({row.period_key})" if row.period_key != ONE_OFF_PERIOD else ""
-
-        if days_remaining < 0:
-            when = f"was due {abs(days_remaining)} day(s) ago"
-        elif days_remaining == 0:
-            when = "is due today"
-        else:
-            when = f"is due in {days_remaining} day(s)"
-
-        if row.owed_by != "Contractor":
-            body = (
-                f"{row.clause_code}: the {row.owed_by}'s obligation "
-                f"\"{row.title}\"{period_label} {when} "
-                f"({row.due_date.isoformat()}). A missed deadline here is "
-                f"itself a claim ground - log an Event rather than only "
-                f"chasing it informally."
-            )
-        else:
-            body = (
-                f"{row.clause_code}: \"{row.title}\"{period_label} {when} "
-                f"({row.due_date.isoformat()})."
-            )
-            if rule is not None and rule.rights_destroying:
-                body += " Missing this deadline forfeits an entitlement outright."
-
-        if notification_service.emit(
-            db,
-            project_id=project.id,
-            category=NotificationCategory.COMPLIANCE,
-            severity=severity,
-            title=f"{row.clause_code} - {row.title}{period_label}",
-            body=body,
-            clause_code=row.clause_code,
-            source_type="obligation",
-            source_id=row.id,
-            stage="due",
-            link_path=_obligation_link(project.id, row.id),
-            due_date=row.due_date,
-            days_remaining=days_remaining,
-            dedupe_key=notification_service.build_dedupe_key(
-                "obligation", row.id, "due", severity.value, row.due_date
-            ),
-        ):
+        if _emit_obligation_alert(db, project, row, today, lead_days):
             raised += 1
 
     return raised
@@ -940,7 +954,20 @@ def waive(
 
 def reopen(db: Session, obligation_id: UUID) -> ComplianceObligation | None:
     """Undo a waiver, or clear a recorded submission that was entered in
-    error, and let the next tick decide the status again."""
+    error, and put it back on the alert stream immediately.
+
+    Recording or waiving an obligation resolves whatever alert was live
+    for it (see mark_submitted / waive above); reopening is that
+    decision's undo, so it has to be symmetric - the badge must count
+    this again the moment a human says it isn't actually done, not
+    tomorrow morning when the next tick happens to notice. Reviving the
+    alert that was retired covers the common case exactly (same title,
+    body and severity it had when resolved); emitting a fresh one is the
+    fallback for an obligation that was closed before it was ever alerted
+    in the first place (nothing to revive) - if the still-resolved status
+    left it beyond the alert lead window, emit is a no-op, exactly like
+    the daily sweep would decide.
+    """
     obligation = db.get(ComplianceObligation, obligation_id)
     if obligation is None:
         return None
@@ -952,7 +979,14 @@ def reopen(db: Session, obligation_id: UUID) -> ComplianceObligation | None:
 
     project = db.get(Project, obligation.project_id)
     lead_days = config_from_project(project).alert_lead_days
-    obligation.status = compute_status(obligation, get_today(), lead_days)
+    today = get_today()
+    obligation.status = compute_status(obligation, today, lead_days)
+
+    revived = notification_service.revive_source(
+        db, source_type="obligation", source_id=obligation.id
+    )
+    if revived == 0 and not obligation.is_historical:
+        _emit_obligation_alert(db, project, obligation, today, lead_days)
 
     db.commit()
     db.refresh(obligation)

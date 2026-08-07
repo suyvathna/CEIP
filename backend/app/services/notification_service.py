@@ -219,6 +219,44 @@ def resolve_source(
     return count
 
 
+def revive_source(
+    db: Session,
+    *,
+    source_type: str,
+    source_id: UUID,
+    stage: str | None = None,
+    commit: bool = False,
+) -> int:
+    """
+    The undo for resolve_source: bring back every alert that was retired
+    about a record (or one stage of it) because a human is now saying the
+    thing it warned about isn't actually done after all - see
+    compliance_service.reopen(). Alerts are never deleted, so this is
+    exact: the row that comes back is the one that existed, with the same
+    title/body/severity it had, not a freshly-composed one.
+    """
+    stmt = select(Notification).where(
+        Notification.source_type == source_type,
+        Notification.source_id == source_id,
+        Notification.is_resolved.is_(True),
+    )
+
+    if stage is not None:
+        stmt = stmt.where(Notification.stage == stage)
+
+    rows = list(db.scalars(stmt).all())
+
+    for row in rows:
+        row.is_resolved = False
+        row.resolved_at = None
+        row.resolved_reason = None
+
+    if commit:
+        db.commit()
+
+    return len(rows)
+
+
 def list_notifications(
     db: Session,
     *,
@@ -271,7 +309,6 @@ def list_notifications(
 
 def unread_count(db: Session, *, project_id: UUID | None = None) -> int:
     stmt = select(func.count(Notification.id)).where(
-        Notification.is_read.is_(False),
         Notification.is_resolved.is_(False),
     )
 
@@ -290,8 +327,16 @@ def unread_summary(db: Session, *, project_id: UUID | None = None) -> dict:
     point of resolution - a PM who has done everything asked of them must
     see zero, because a badge that only ever climbs is indistinguishable
     from a badge nobody is acting on.
+
+    Deliberately NOT filtered by is_read. Opening the bell (or clicking
+    through to look at something) is a human saying "I've seen this",
+    not "this is handled" - an alert a PM viewed but didn't act on has to
+    keep counting, or the badge stops meaning anything the moment
+    someone glances at it. Only mark_submitted/waive/resolve_settled_alerts
+    (i.e. actually recording, waiving, or fixing the underlying thing)
+    should ever make this number drop.
     """
-    base = [Notification.is_read.is_(False), Notification.is_resolved.is_(False)]
+    base = [Notification.is_resolved.is_(False)]
 
     if project_id is not None:
         base.append(Notification.project_id == project_id)

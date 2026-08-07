@@ -46,9 +46,16 @@ function NotificationBell({ projectId }) {
     refetchInterval: REFETCH_MS,
   });
 
+  // Live, not unread - a notification stays in this list (and in the
+  // badge count) until the thing it's about is actually recorded, waived
+  // or otherwise resolved. Viewing/clicking through only marks it read,
+  // which is a "seen" flag for the fontWeight below, not a way to make
+  // it disappear - conflating the two was exactly the bug where the
+  // badge dropped to zero the moment someone glanced at the menu, with
+  // nothing actually done.
   const listQuery = useQuery({
-    queryKey: ["notifications", "unread", projectId],
-    queryFn: () => getNotifications({ projectId, unreadOnly: true, limit: 20 }),
+    queryKey: ["notifications", "live", projectId],
+    queryFn: () => getNotifications({ projectId, limit: 20 }),
     enabled: Boolean(anchorEl),
   });
 
@@ -192,7 +199,10 @@ function NotificationBell({ projectId }) {
                   )}
               </Stack>
 
-              <Typography variant="body2" fontWeight={600}>
+              <Typography
+                variant="body2"
+                fontWeight={notification.is_read ? 400 : 700}
+              >
                 {notification.title}
               </Typography>
 

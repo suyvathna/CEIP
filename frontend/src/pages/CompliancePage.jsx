@@ -9,6 +9,7 @@ import Chip from "@mui/material/Chip";
 import Alert from "@mui/material/Alert";
 import Divider from "@mui/material/Divider";
 import CircularProgress from "@mui/material/CircularProgress";
+import IconButton from "@mui/material/IconButton";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -45,6 +46,7 @@ import {
 } from "../api/compliance";
 import { getProject, updateProjectMilestones } from "../api/projects";
 import { uploadEvidence } from "../api/evidence";
+import { BASE_URL } from "../api/client";
 
 const STATUS_COLORS = {
   Pending: "default",
@@ -567,6 +569,13 @@ function CompliancePage() {
   useEffect(() => {
     if (!highlightId || obligations.length === 0) return;
 
+    // Re-set even when it's already this value - clicking a second alert
+    // while already on this page changes highlightId but reuses the same
+    // mounted component (no remount to re-run a useState initializer), so
+    // without this the flash class - and the scroll below - would only
+    // ever fire once per page load.
+    setFlashId(highlightId);
+
     const row = document.getElementById(`obligation-row-${highlightId}`);
     row?.scrollIntoView({ behavior: "smooth", block: "center" });
 
@@ -757,7 +766,20 @@ function CompliancePage() {
                       />
                     </TableCell>
                     <TableCell align="right">
-                      <Stack direction="row" spacing={0.5} sx={{ justifyContent: "flex-end" }}>
+                      <Stack direction="row" spacing={0.5} sx={{ justifyContent: "flex-end", alignItems: "center" }}>
+                        {row.evidence_id && (
+                          <Tooltip title="View attachment">
+                            <IconButton
+                              size="small"
+                              component="a"
+                              href={`${BASE_URL}/evidence/download/${row.evidence_id}`}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              <AttachFileIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                         {!row.submitted_date && !closed && (
                           <Button size="small" onClick={() => setSubmitTarget(row)}>
                             Record
