@@ -183,7 +183,7 @@ function NewClaimPage() {
             label="Applicable governing clause"
             value={clauseSelection}
             onChange={(e) => handleClauseChange(e.target.value)}
-            helperText="Selecting a ground auto-fills the governing clause below with the matching FIDIC Red Book 2017 Sub-Clause. Pick 'Other / type manually' if this claim's ground isn't in the list."
+            helperText="Matches this claim to the FIDIC Red Book 2017 Sub-Clause shown below. Pick 'Other / type manually' if this claim's ground isn't in the list."
           >
             <MenuItem value="">— Select a claim ground —</MenuItem>
             {clauseOptions.map((option) => (
@@ -205,12 +205,14 @@ function NewClaimPage() {
             </Alert>
           )}
 
-          <TextField
-            label="Governing clause"
-            value={form.governing_clause}
-            onChange={(e) => setForm({ ...form, governing_clause: e.target.value })}
-            helperText="The substantive entitlement clause this claim is based on - auto-filled from the dropdown above, editable since Particular Conditions/MDB amendments can change clause numbers. Separate from the Sub-Clause 20.2 claims procedure this page already tracks."
-          />
+          {clauseSelection === OTHER_CLAUSE_VALUE && (
+            <TextField
+              label="Governing clause"
+              value={form.governing_clause}
+              onChange={(e) => setForm({ ...form, governing_clause: e.target.value })}
+              helperText="Type the clause reference manually since it isn't in the list above."
+            />
+          )}
 
           <TextField
             select
